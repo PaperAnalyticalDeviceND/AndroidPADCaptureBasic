@@ -12,6 +12,7 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -20,6 +21,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
+import android.widget.Toast;
 
 import java.io.File;
 import java.text.DateFormat;
@@ -123,22 +125,34 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             Mat mTemp = new Mat();
 
+            boolean Success = true;
+
             File outputFile = new File(padImageDirectory, df.format(today) + ".jpeg");
             Imgproc.cvtColor(mRgba, mTemp, Imgproc.COLOR_BGRA2RGBA);
-            Highgui.imwrite(outputFile.getPath(), mTemp);
-
-            Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            intentA.setData(Uri.fromFile(outputFile));
-            sendBroadcast(intentA);
-
+            if(Highgui.imwrite(outputFile.getPath(), mTemp) ) {
+                Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                intentA.setData(Uri.fromFile(outputFile));
+                sendBroadcast(intentA);
+            }else {
+                Success = false;
+            }
 
             File outputFileM = new File(padImageDirectory, df.format(today) + "-contours.jpeg");
             Imgproc.cvtColor(mRgbaModified, mTemp, Imgproc.COLOR_BGRA2RGBA);
-            Highgui.imwrite(outputFileM.getPath(), mTemp);
+            if(Highgui.imwrite(outputFileM.getPath(), mTemp) ) {
+                Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                intent.setData(Uri.fromFile(outputFileM));
+                sendBroadcast(intent);
+            }else{
+                Success = false;
+            }
 
-            Intent intentB = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            intentB.setData(Uri.fromFile(outputFileM));
-            sendBroadcast(intentB);
+            Context context = getApplicationContext();
+            if( Success ) {
+                Toast.makeText(context, "Save Succeeded", Toast.LENGTH_SHORT).show();
+            }else{
+                Toast.makeText(context, "Save Failed", Toast.LENGTH_SHORT).show();
+            }
 
             SwitchVisable = true;
             SaveVisable = RejectVisable = false;

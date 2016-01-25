@@ -12,6 +12,8 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -125,9 +127,18 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Imgproc.cvtColor(mRgba, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(outputFile.getPath(), mTemp);
 
+            Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            intentA.setData(Uri.fromFile(outputFile));
+            sendBroadcast(intentA);
+
+
             File outputFileM = new File(padImageDirectory, df.format(today) + "-contours.jpeg");
             Imgproc.cvtColor(mRgbaModified, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(outputFileM.getPath(), mTemp);
+
+            Intent intentB = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            intentB.setData(Uri.fromFile(outputFileM));
+            sendBroadcast(intentB);
 
             SwitchVisable = true;
             SaveVisable = RejectVisable = false;

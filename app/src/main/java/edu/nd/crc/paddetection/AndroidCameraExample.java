@@ -14,29 +14,39 @@ import org.opencv.imgproc.Moments;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.AssetManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import com.sh1r0.caffe_android_lib.CaffeMobile;
+
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Scanner;
 import java.util.Vector;
 
-public class AndroidCameraExample extends Activity implements CvCameraViewListener2 {
+public class AndroidCameraExample extends Activity implements CvCameraViewListener2, CNNListener {
 	private Mat                    mRgba;
 	private JavaCamResView mOpenCvCameraView;
 
     static {
+        System.loadLibrary("caffe");
+        System.loadLibrary("caffe_jni");
         System.loadLibrary("opencv_java");
     }
 
@@ -48,6 +58,9 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private boolean SwitchVisable;
     private boolean SaveVisable;
     private boolean RejectVisable;
+    private CaffeMobile caffeMobile;
+
+    private static String[] IMAGENET_CLASSES;
 
     @Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -62,6 +75,26 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
         SwitchVisable = true;
         SaveVisable = RejectVisable = false;
+
+        caffeMobile = new CaffeMobile();
+        caffeMobile.setNumThreads(4);
+        caffeMobile.loadModel("/sdcard/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", "/sdcard/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
+
+        float[] meanValues = {104, 117, 123};
+        caffeMobile.setMean(meanValues);
+
+        AssetManager am = this.getAssets();
+        try {
+            InputStream is = am.open("drug_names.txt");
+            Scanner sc = new Scanner(is);
+            List<String> lines = new ArrayList<String>();
+            while (sc.hasNextLine()) {
+                lines.add(sc.nextLine());
+            }
+            IMAGENET_CLASSES = lines.toArray(new String[0]);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 	@Override
@@ -130,6 +163,9 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             File outputFile = new File(padImageDirectory, df.format(today) + ".jpeg");
             Imgproc.cvtColor(mRgba, mTemp, Imgproc.COLOR_BGRA2RGBA);
             if(Highgui.imwrite(outputFile.getPath(), mTemp) ) {
+                CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
+                cnnTask.execute(outputFile.getAbsolutePath());
+
                 Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
                 intentA.setData(Uri.fromFile(outputFile));
                 sendBroadcast(intentA);
@@ -230,4 +266,32 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
 		return mRgbaModified;
 	}
+
+    private class CNNTask extends AsyncTask<String, Void, Integer> {
+        private CNNListener listener;
+        private long startTime;
+
+        public CNNTask(CNNListener listener) {
+            this.listener = listener;
+        }
+
+        @Override
+        protected Integer doInBackground(String... strings) {
+            startTime = SystemClock.uptimeMillis();
+            return caffeMobile.predictImage(strings[0])[0];
+        }
+
+        @Override
+        protected void onPostExecute(Integer integer) {
+            Log.i("Predict", String.format("elapsed wall time: %d ms", SystemClock.uptimeMillis() - startTime));
+            listener.onTaskCompleted(integer);
+            super.onPostExecute(integer);
+        }
+    }
+
+    @Override
+    public void onTaskCompleted(int result) {
+        Context context = getApplicationContext();
+        Toast.makeText(context, "Predicted Drug: " + IMAGENET_CLASSES[result], Toast.LENGTH_SHORT).show();
+    }
 }

@@ -19,16 +19,10 @@ public class JavaCamResView extends JavaCameraView {
     }
 
     public void Setup(){
-        Camera.Parameters params = mCamera.getParameters();
-
-        params.setAutoExposureLock(false);
-        params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-
-        List<Camera.Size> sizes = params.getSupportedPictureSizes();
-        Camera.Size size = sizes.get(0);
-        params.setPictureSize(size.width, size.height);
-
-        mCamera.setParameters(params);
+        StopPreview();
+        disconnectCamera();
+        connectCamera(960, 720);
+        StartPreview();
     }
 
     public void togglePreview(){

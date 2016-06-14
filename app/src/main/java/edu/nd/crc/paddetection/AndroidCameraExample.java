@@ -1,66 +1,39 @@
 package edu.nd.crc.paddetection;
 
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
+import org.opencv.core.Rect;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.imgproc.Moments;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.AssetManager;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import com.sh1r0.caffe_android_lib.CaffeMobile;
-
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Vector;
 
-public class AndroidCameraExample extends Activity implements CvCameraViewListener2, CNNListener {
-	private Mat                    mRgba;
+public class AndroidCameraExample extends Activity implements CvCameraViewListener2 {
 	private JavaCamResView mOpenCvCameraView;
 
     static {
-        System.loadLibrary("caffe");
-        System.loadLibrary("caffe_jni");
         System.loadLibrary("opencv_java");
     }
 
-    private Menu mMenu;
-    private MenuItem mItemSwitchCamera;
-    private MenuItem mItemSaveImage;
-    private MenuItem mItemRejectImage;
-    private Mat mRgbaModified;
-    private boolean SwitchVisable;
-    private boolean SaveVisable;
-    private boolean RejectVisable;
-    private CaffeMobile caffeMobile;
-
-    private static String[] IMAGENET_CLASSES;
+    private Mat mRgba;
 
     @Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -73,33 +46,44 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 		mOpenCvCameraView.setCvCameraViewListener(this);
         mOpenCvCameraView.enableFpsMeter();
 
-        SwitchVisable = true;
-        SaveVisable = RejectVisable = false;
+        mOpenCvCameraView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d("PictureDemo", "Saved Image");
+                File SDlocation = Environment.getExternalStorageDirectory();
+                File padImageDirectory = new File(SDlocation + "/images/");
+                padImageDirectory.mkdirs();
 
-        caffeMobile = new CaffeMobile();
-        caffeMobile.setNumThreads(4);
-        caffeMobile.loadModel("/sdcard/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", "/sdcard/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
+                DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                Date today = Calendar.getInstance().getTime();
 
-        float[] meanValues = {104, 117, 123};
-        caffeMobile.setMean(meanValues);
+                Mat mTemp = new Mat();
+                Mat result = new Mat(mRgba, new Rect(105, 120, mRgba.width()-172, mRgba.height()-240));
 
-        AssetManager am = this.getAssets();
-        try {
-            InputStream is = am.open("drug_names.txt");
-            Scanner sc = new Scanner(is);
-            List<String> lines = new ArrayList<String>();
-            while (sc.hasNextLine()) {
-                lines.add(sc.nextLine());
+                boolean Success = true;
+
+                File outputFile = new File(padImageDirectory, df.format(today) + ".jpeg");
+                Imgproc.cvtColor(result, mTemp, Imgproc.COLOR_BGRA2RGBA);
+                if(Highgui.imwrite(outputFile.getPath(), mTemp) ) {
+                    Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                    intentA.setData(Uri.fromFile(outputFile));
+                    sendBroadcast(intentA);
+                }else {
+                    Success = false;
+                }
+
+                Context context = getApplicationContext();
+                if( Success ) {
+                    Toast.makeText(context, "Save Succeeded", Toast.LENGTH_SHORT).show();
+                }else{
+                    Toast.makeText(context, "Save Failed", Toast.LENGTH_SHORT).show();
+                }
             }
-            IMAGENET_CLASSES = lines.toArray(new String[0]);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        });
     }
 
 	@Override
-	public void onPause()
-	{
+	public void onPause() {
 		super.onPause();
 		if (mOpenCvCameraView != null) {
             mOpenCvCameraView.disableView();
@@ -107,8 +91,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 	}
 
 	@Override
-	public void onResume()
-	{
+	public void onResume() {
 		super.onResume();
         mOpenCvCameraView.enableView();
 	}
@@ -120,178 +103,16 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         }
 	}
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        mItemSwitchCamera = menu.add("Toggle Camera");
-        mItemSaveImage = menu.add("Save Image");
-        mItemRejectImage = menu.add("Reject Image");
-        return true;
-    }
-
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        mItemSwitchCamera.setVisible(SwitchVisable);
-        mItemSaveImage.setVisible(SaveVisable);
-        mItemRejectImage.setVisible(RejectVisable);
-
-        return super.onPrepareOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-
-        if (item == mItemSwitchCamera) {
-            mOpenCvCameraView.togglePreview();
-        } else if ( item == mItemRejectImage ){
-            mOpenCvCameraView.togglePreview();
-
-            SwitchVisable = true;
-            SaveVisable = RejectVisable = false;
-        } else if ( item == mItemSaveImage ){
-            Log.d("PictureDemo", "Saved Image");
-            File SDlocation = Environment.getExternalStorageDirectory();
-            File padImageDirectory = new File(SDlocation + "/images/");
-            padImageDirectory.mkdirs();
-
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-            Date today = Calendar.getInstance().getTime();
-
-            Mat mTemp = new Mat();
-
-            boolean Success = true;
-
-            File outputFile = new File(padImageDirectory, df.format(today) + ".jpeg");
-            Imgproc.cvtColor(mRgba, mTemp, Imgproc.COLOR_BGRA2RGBA);
-            if(Highgui.imwrite(outputFile.getPath(), mTemp) ) {
-                CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
-                cnnTask.execute(outputFile.getAbsolutePath());
-
-                Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                intentA.setData(Uri.fromFile(outputFile));
-                sendBroadcast(intentA);
-            }else {
-                Success = false;
-            }
-
-            File outputFileM = new File(padImageDirectory, df.format(today) + "-contours.jpeg");
-            Imgproc.cvtColor(mRgbaModified, mTemp, Imgproc.COLOR_BGRA2RGBA);
-            if(Highgui.imwrite(outputFileM.getPath(), mTemp) ) {
-                Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                intent.setData(Uri.fromFile(outputFileM));
-                sendBroadcast(intent);
-            }else{
-                Success = false;
-            }
-
-            Context context = getApplicationContext();
-            if( Success ) {
-                Toast.makeText(context, "Save Succeeded", Toast.LENGTH_SHORT).show();
-            }else{
-                Toast.makeText(context, "Save Failed", Toast.LENGTH_SHORT).show();
-            }
-
-            SwitchVisable = true;
-            SaveVisable = RejectVisable = false;
-        }
-
-        return true;
-    }
-
-
     public void onCameraViewStarted(int width, int height) {
-		mRgba = new Mat(height, width, CvType.CV_8UC4);
-        mRgbaModified = new Mat(height, width, CvType.CV_8UC4);
-        
         mOpenCvCameraView.Setup();
-
 	}
 
 	public void onCameraViewStopped() {
-		mRgba.release();
+
 	}
 
 	public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         mRgba = inputFrame.rgba();
-        mRgbaModified = inputFrame.rgba();
-
-        Mat edges = inputFrame.gray().clone();
-        Imgproc.Canny(edges, edges, 100, 200, 3, true);
-
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        if( contours.size() > 0 ) {
-            Vector<Moments> mu = new Vector<>();
-            Vector<Point> mc = new Vector<>();
-
-            for (int i = 0; i < contours.size(); i++) {
-                mu.add(Imgproc.moments(contours.get(i), false));
-                mc.add(new Point(mu.get(i).get_m10() / mu.get(i).get_m00(), mu.get(i).get_m01() / mu.get(i).get_m00()));
-            }
-
-            int iBuff[] = new int[ (int) (hierarchy.total() * hierarchy.channels()) ];
-            hierarchy.get(0, 0, iBuff);
-
-            Vector<Integer> Markers = new Vector<>();
-            for (int i = 0; i < contours.size(); i++) {
-                int k = i;
-                int c = 0;
-
-                while (iBuff[k*4+2] != -1) {
-                    k = iBuff[k*4+2];
-                    c = c + 1;
-                }
-
-                if (iBuff[k*4+2] != -1) {
-                    c = c + 1;
-                }
-
-                if (c >= 5) {
-                    Markers.add(i);
-                }
-            }
-
-            for (int i = 0; i < Markers.size(); i++) {
-                Imgproc.drawContours(mRgbaModified, contours, Markers.get(i), new Scalar(255, 200, 0), 2, 8, hierarchy, 0, new Point(0, 0));
-            }
-
-            if( Markers.size() >= 6 ) {
-                mOpenCvCameraView.StopPreview();
-
-                SwitchVisable = false;
-                SaveVisable = RejectVisable = true;
-            }
-        }
-
-		return mRgbaModified;
+		return inputFrame.rgba();
 	}
-
-    private class CNNTask extends AsyncTask<String, Void, Integer> {
-        private CNNListener listener;
-        private long startTime;
-
-        public CNNTask(CNNListener listener) {
-            this.listener = listener;
-        }
-
-        @Override
-        protected Integer doInBackground(String... strings) {
-            startTime = SystemClock.uptimeMillis();
-            return caffeMobile.predictImage(strings[0])[0];
-        }
-
-        @Override
-        protected void onPostExecute(Integer integer) {
-            Log.i("Predict", String.format("elapsed wall time: %d ms", SystemClock.uptimeMillis() - startTime));
-            listener.onTaskCompleted(integer);
-            super.onPostExecute(integer);
-        }
-    }
-
-    @Override
-    public void onTaskCompleted(int result) {
-        Context context = getApplicationContext();
-        Toast.makeText(context, "Predicted Drug: " + IMAGENET_CLASSES[result], Toast.LENGTH_SHORT).show();
-    }
 }

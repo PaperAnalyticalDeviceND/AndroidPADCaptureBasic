@@ -9,6 +9,7 @@ import android.test.AndroidTestCase;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.opencv.android.Utils;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Point3;
@@ -19,6 +20,7 @@ import java.util.List;
 
 import edu.nd.crc.paddetection.ContourDetection;
 
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -111,6 +113,82 @@ public class ContourDetectionTest extends AndroidTestCase {
                 }
             }
             assertTrue(String.format("Expected %s to match %s", OtherExpected.toString(), Other.toString()), found);
+        }
+    }
+
+    @Test
+    public void test_qr_order(){
+        // Input
+        List<Point> qr = new ArrayList<>();
+        qr.add( new Point(167, 59) );
+        qr.add( new Point(72, 61) );
+        qr.add( new Point(72, 156) );
+
+        List<Point> other = new ArrayList<>();
+        other.add( new Point(430, 58) );
+        other.add( new Point(438, 721) );
+
+        // Sort
+        ContourDetection.SortQR(qr, other);
+
+        // Test QR
+        List<Point> qrexpected = new ArrayList<>();
+        qrexpected.add( new Point(72, 61) );
+        qrexpected.add( new Point(72, 156) );
+        qrexpected.add( new Point(167, 59) );
+
+        for( Point e : qrexpected ){
+            boolean found = false;
+            for( Point a : qr ){
+                if( Math.abs(a.x - e.x) < 1e-5 && Math.abs(a.y - e.y) < 1e-5 ) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(String.format("Expected %s to match %s", qrexpected.toString(), qr.toString()), found);
+        }
+
+        // Test Other
+        List<Point> otherexpected = new ArrayList<>();
+        other.add( new Point(438, 721) );
+        other.add( new Point(430, 58) );
+
+        for( Point e : otherexpected ){
+            boolean found = false;
+            for( Point a : other ){
+                if( Math.abs(a.x - e.x) < 1e-5 && Math.abs(a.y - e.y) < 1e-5 ) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(String.format("Expected %s to match %s", otherexpected.toString(), other.toString()), found);
+        }
+    }
+
+    @Test
+    public void test_transform_points() {
+        // Input
+        List<Point> source = new ArrayList<>();
+        source.add(new Point(398.5, 225.5));
+        source.add(new Point(388.5, 1173.5));
+
+        List<Point> destination = new ArrayList<>();
+        destination.add(new Point(387, 214));
+        destination.add(new Point(387, 1164));
+
+        // Calculate Actual
+        Mat actual = ContourDetection.TransformPoints(source, destination);
+
+        // Load Expected
+        Mat expected = new Mat(2, 3, CvType.CV_32FC1);
+        expected.put(0, 0, 1.002, 0.0106, -14.6797 );
+        expected.put(1, 0, -0.0106, 1.002, -7.7386 );
+
+        // Compare
+        for( int i = 0; i < actual.rows(); i++ ) {
+            for (int j = 0; j < actual.cols(); j++) {
+                assertThat(String.format("Value[%d,%d] Matches", i, j), actual.get(i, j)[0], closeTo(expected.get(i, j)[0], 1e-4));
+            }
         }
     }
 }

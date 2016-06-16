@@ -152,7 +152,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         Mat input = Highgui.imread(path);
         Mat gray = new Mat();
 
-        balance_white(input);
+        WhiteBalance.InPlace(input);
 
         Imgproc.cvtColor(input, gray, Imgproc.COLOR_RGB2GRAY);
 
@@ -290,61 +290,6 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
                 intentA.setData(Uri.fromFile(outputFile));
                 sendBroadcast(intentA);
-            }
-        }
-    }
-
-    void balance_white(Mat mat) {
-        double discard_ratio = 0.05;
-        int[][] hists = new int[3][256];
-        for( int i = 0; i < 3; i++ ){
-            for( int j = 0; j < 256; j++) {
-                hists[i][j] = 0;
-            }
-        }
-
-        for (int y = 0; y < mat.rows(); ++y) {
-            byte buff[] = new byte[mat.cols() * mat.channels()];
-            mat.get(y, 0, buff);
-            for (int x = 0; x < mat.cols(); ++x) {
-                for (int j = 0; j < 3; ++j) {
-                    hists[j][buff[x * 3 + j]] += 1;
-                }
-            }
-        }
-
-        // cumulative hist
-        int total = mat.cols()*mat.rows();
-        int[] vmin = new int[3];
-        int[] vmax = new int[3];
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 255; ++j) {
-                hists[i][j + 1] += hists[i][j];
-            }
-            vmin[i] = 0;
-            vmax[i] = 255;
-            while (vmin[i] < 255 && hists[i][vmin[i]] < discard_ratio * total) {
-                vmin[i] += 1;
-            }
-            while (vmin[i] > 0 && hists[i][vmax[i]] > (1 - discard_ratio) * total) {
-                vmax[i] -= 1;
-            }
-            if (vmax[i] < 255 - 1) vmax[i] += 1;
-        }
-
-
-        for (int y = 0; y < mat.rows(); ++y) {
-            for (int x = 0; x < mat.cols(); ++x) {
-                byte buff[] = new byte[mat.cols() * mat.channels()];
-                mat.get(y, 0, buff);
-
-                for (int j = 0; j < 3; ++j) {
-                    int val = (int)mat.get(y,x)[j];
-                    if (val < vmin[j]) val = vmin[j];
-                    if (val > vmax[j]) val = vmax[j];
-                    buff[x * 3 + j] = (byte)((val - vmin[j]) * 255.0 / (vmax[j] - vmin[j]));
-                }
-                mat.put(y, 0, buff);
             }
         }
     }

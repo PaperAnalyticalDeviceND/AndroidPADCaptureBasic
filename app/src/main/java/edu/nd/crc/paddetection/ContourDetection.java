@@ -420,7 +420,7 @@ public class ContourDetection {
         Core.line(fringe_warped, new Point(comparePoints.get(1).x,comparePoints.get(1).y-5), new Point(comparePoints.get(1).x,comparePoints.get(1).y+5), new Scalar(0,255,0),1);
         Core.line(fringe_warped, new Point(comparePoints.get(1).x-5,comparePoints.get(1).y), new Point(comparePoints.get(1).x+5,comparePoints.get(1).y), new Scalar(0,255,0),1);
 
-        return fringe_warped.submat(359, 849, 70, 710 );
+        return fringe_warped;
     }
 
     public static void SeperateMarkers(List<Point3> Markers, List<Point> QR, List<Point> Other) {

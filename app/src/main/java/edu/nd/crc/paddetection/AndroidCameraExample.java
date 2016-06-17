@@ -1,6 +1,7 @@
 package edu.nd.crc.paddetection;
 
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
@@ -14,11 +15,17 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -26,7 +33,13 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import com.sh1r0.caffe_android_lib.CaffeMobile;
+
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -34,17 +47,23 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Scanner;
 import java.util.Vector;
 
-public class AndroidCameraExample extends Activity implements CvCameraViewListener2 {
+public class AndroidCameraExample extends Activity implements CvCameraViewListener2, CNNListener {
 	private JavaCamResView mOpenCvCameraView;
 
     static {
+        System.loadLibrary("caffe");
+        System.loadLibrary("caffe_jni");
         System.loadLibrary("opencv_java");
     }
 
-    private Mat mRgba;
-    private double IMAGE_WIDTH = 600;
+    private Mat mRgba, mTemplate;
+    private String LOG_TAG = "PAD";
+    private static String[] IMAGENET_CLASSES;
+    private CaffeMobile caffeMobile;
+    private ProgressDialog dialog;
 
     @Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -60,40 +79,44 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         mOpenCvCameraView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("PictureDemo", "Saved Image");
-                File SDlocation = Environment.getExternalStorageDirectory();
-                File padImageDirectory = new File(SDlocation + "/images/");
-                padImageDirectory.mkdirs();
+                dialog = ProgressDialog.show(AndroidCameraExample.this, "Predicting...", "Cropping Image", true);
 
-                DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-                Date today = Calendar.getInstance().getTime();
+                CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
+                cnnTask.execute(mRgba, mTemplate);
 
-                Mat mTemp = new Mat();
-                Mat result = new Mat(mRgba, new Rect(105, 120, mRgba.width()-172, mRgba.height()-240));
-                Core.flip(result.t(), result, 1);
-
-                boolean Success = true;
-
-                File outputFile = new File(padImageDirectory, df.format(today) + ".jpeg");
-                Imgproc.cvtColor(result, mTemp, Imgproc.COLOR_BGRA2RGBA);
-                if(Highgui.imwrite(outputFile.getPath(), mTemp) ) {
-                    Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                    intentA.setData(Uri.fromFile(outputFile));
-                    sendBroadcast(intentA);
-                }else {
-                    Success = false;
-                }
-
-                Context context = getApplicationContext();
-                if( Success ) {
-                    Toast.makeText(context, "Save Succeeded", Toast.LENGTH_SHORT).show();
-                }else{
-                    Toast.makeText(context, "Save Failed", Toast.LENGTH_SHORT).show();
-                }
-
-                RectifyImage(outputFile.getPath());
+                mOpenCvCameraView.togglePreview();
             }
         });
+
+        // Parse input template file
+        Bitmap tBM = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/template.png"));
+
+        // Convert to OpenCV matrix
+        Mat tMat = new Mat();
+        Utils.bitmapToMat(tBM, tMat);
+
+        mTemplate = new Mat();
+        Imgproc.cvtColor(tMat, mTemplate, Imgproc.COLOR_BGRA2GRAY);
+
+        caffeMobile = new CaffeMobile();
+        caffeMobile.setNumThreads(4);
+        caffeMobile.loadModel("/sdcard/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", "/sdcard/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
+
+        float[] meanValues = {104, 117, 123};
+        caffeMobile.setMean(meanValues);
+
+        AssetManager am = this.getAssets();
+        try {
+            InputStream is = am.open("drug_names.txt");
+            Scanner sc = new Scanner(is);
+            List<String> lines = new ArrayList<String>();
+            while (sc.hasNextLine()) {
+                lines.add(sc.nextLine());
+            }
+            IMAGENET_CLASSES = lines.toArray(new String[0]);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 	@Override
@@ -130,167 +153,124 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 		return inputFrame.rgba();
 	}
 
-    private class DataPoint implements Comparable<DataPoint>  {
-        public int i;
-        public float Distance, Diameter;
-        public Point Center;
-        public Boolean valid = true;
+    public class PredictionGuess implements Comparable<PredictionGuess> {
+        public int Index;
+        public float Confidence;
 
-        public DataPoint(int ii, float id, float idi, Point imc){
-            i = ii;
-            Distance = id;
-            Diameter = idi;
-            Center = imc;
+        public PredictionGuess(int i, float c) {
+            this.Index = i;
+            this.Confidence = c;
         }
 
-        public int compareTo(DataPoint other) {
-            return new Float(Distance).compareTo(new Float(other.Distance));
+        @Override
+        public int compareTo(PredictionGuess that) {
+            if( this.Confidence > that.Confidence ){
+                return -1;
+            }else{
+                return 1;
+            }
         }
-    };
+    }
 
-    public void RectifyImage(String path){
-        Mat input = Highgui.imread(path);
-        Mat gray = new Mat();
+    private class CNNTask extends AsyncTask<Mat, Void, Vector<PredictionGuess>> {
+        private CNNListener listener;
+        private long startTime;
 
-        WhiteBalance.InPlace(input);
+        public CNNTask(CNNListener listener) {
+            this.listener = listener;
+        }
 
-        Imgproc.cvtColor(input, gray, Imgproc.COLOR_RGB2GRAY);
-
-        float ratio = (float)input.size().width / (float)IMAGE_WIDTH;
-
-        Mat work = new Mat();
-        Imgproc.resize(gray, work, new Size(IMAGE_WIDTH, (input.size().height * IMAGE_WIDTH) / input.size().width), 0, 0, Imgproc.INTER_LINEAR );
-        Mat output = work.clone();
-
-
-        Mat work_blur = new Mat();
-        Imgproc.blur(work, work_blur, new Size(2, 2));
-
-        Mat edges = work.clone();
-        Imgproc.Canny(edges, edges, 40, 150, 3, true);
-
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        if( contours.size() > 0 ) {
-            int iBuff[] = new int[ (int) (hierarchy.total() * hierarchy.channels()) ];
-            hierarchy.get(0, 0, iBuff);
-
-            Vector<Integer> Markers = new Vector<>();
-            for (int i = 0; i < contours.size(); i++) {
-                int k = i;
-                int c = 0;
-
-                while (iBuff[k*4+2] != -1) {
-                    k = iBuff[k*4+2];
-                    c = c + 1;
-                }
-
-                if (iBuff[k*4+2] != -1) {
-                    c = c + 1;
-                }
-
-                if (c >= 3) {
-                    Markers.add(i);
-                }
-            }
-
-            List<DataPoint> order = new Vector<>();
-            for( int i=0; i < Markers.size(); i++){
-                Imgproc.drawContours(output, contours, Markers.get(i), new Scalar(255, 200, 0), 2, 8, hierarchy, 0, new Point(0, 0));
-
-                Moments mum = Imgproc.moments(contours.get(Markers.get(i)), false);
-                Point mc = new Point( mum.get_m10()/mum.get_m00() , mum.get_m01()/mum.get_m00() );
-
-                //calculate distance to nearest edge
-                float dist = Math.min(Math.min(Math.min((float)mc.x, (float)(IMAGE_WIDTH - mc.x)), (float)mc.y), (float)(input.size().height - mc.y));
-
-                Rect box = Imgproc.boundingRect(contours.get(Markers.get(i)));
-
-                float dia = Math.max((float)box.width, (float)box.height) * 0.5f;
-
-                //only add it if sensible
-                if(dia < 30 && dia > 15){
-                    order.add(new DataPoint(i, dist, dia, mc));
-                }
-            }
-
-            for( int i=0; i < order.size(); i++){
-                if(order.get(i).valid){
-                    for( int j=i+1; j < order.size(); j++){
-                        if(order.get(j).valid){
-                            double ix = order.get(i).Center.x;
-                            double iy = order.get(i).Center.y;
-                            double jx = order.get(j).Center.x;
-                            double jy = order.get(j).Center.y;
-
-                            if(Math.abs(ix - jx) < 5 && Math.abs(iy - jy) < 5){
-                                if(order.get(i).Diameter < order.get(j).Diameter){
-                                    order.get(i).valid = false;
-                                    break;
-                                }else{
-                                    order.get(j).valid = false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Collections.sort(order);
-
-            Point com = new Point(0.0, 0.0);
-            float pcountf = 0.0f;
-
-            for( int i=0; i<order.size(); i++){
-                if(order.get(i).valid){
-                    com.x += order.get(i).Center.x;
-                    com.y += order.get(i).Center.y;
-                    pcountf += 1.0;
-                }
-            }
-
-            com.x /= pcountf;
-            com.y /= pcountf;
-            Core.circle(output, com, 10, new Scalar(0, 255, 255), 1, 8, 0);
-
-            //count points
-            int pcount = 0;
-
-            //loop
-            for( int j=0; j<order.size(); j++){
-                if(order.get(j).valid){
-                    float dia = 0.0f;
-                    Point mcd = order.get(j).Center;
-
-                    //if top LHS then QR code marker
-                    if(mcd.x < (com.x + 30) && mcd.y < com.y){
-                        dia = 27;
-                    }else{
-                        dia = 20;
-                    }
-
-                    Core.circle(output, mcd, (int)dia, new Scalar(0, 0, 255), 1, 8, 0);
-
-                    Log.i("Contours", String.format("Point: %d, %d, %d", (int)(mcd.y * ratio + 0.5), (int)(mcd.x * ratio  + 0.5), (int)(dia * ratio + 0.5)));
-                    if(pcount++ >= 5) break;
-                }
-            }
-
-            File SDlocation = Environment.getExternalStorageDirectory();
-            File padImageDirectory = new File(SDlocation + "/images/");
-            padImageDirectory.mkdirs();
+        @Override
+        protected Vector<PredictionGuess> doInBackground(Mat... input) {
+            startTime = SystemClock.uptimeMillis();
 
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
             Date today = Calendar.getInstance().getTime();
 
-            File outputFile = new File(padImageDirectory, df.format(today) + "-rectify.jpeg");
-            if(Highgui.imwrite(outputFile.getPath(), output) ) {
-                Intent intentA = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                intentA.setData(Uri.fromFile(outputFile));
-                sendBroadcast(intentA);
+            File SDlocation = Environment.getExternalStorageDirectory();
+            File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
+            padImageDirectory.mkdirs();
+
+            Mat mTemp = new Mat();
+            Mat result = new Mat(input[0], new Rect(105, 120, input[0].width()-172, input[0].height()-240));
+            Core.flip(result.t(), result, 1);
+
+            File outputFile = new File(padImageDirectory, "capture.jpeg");
+            Imgproc.cvtColor(result, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            Highgui.imwrite(outputFile.getPath(), mTemp);
+
+            runOnUiThread(new Runnable() {
+                  @Override
+                  public void run() {
+                      dialog.setMessage("Rectifying Image");
+                  }
+            });
+
+            // Run white balance
+            Mat cropped = ContourDetection.RectifyImage(input[0], input[1]);
+
+            File cFile = new File(padImageDirectory, "rectified.jpeg");
+            Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            Highgui.imwrite(cFile.getPath(), mTemp);
+
+            Mat cResult = cropped.submat(359, 849, 70, 710 );
+
+            File crFile = new File(padImageDirectory, "cropped.jpeg");
+            Imgproc.cvtColor(cResult, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            Highgui.imwrite(crFile.getPath(), mTemp);
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    dialog.setMessage("Predicting Drug");
+                }
+            });
+
+            float[] scores = caffeMobile.getConfidenceScore(crFile.getPath());
+
+            Vector<PredictionGuess> guesses = new Vector<>();
+            for( int i = 0; i < scores.length; i++){
+                guesses.add(new PredictionGuess(i, scores[i]));
             }
+            Collections.sort(guesses);
+
+            try {
+                File oFile = new File(padImageDirectory, "guesses.txt");
+                oFile.createNewFile();
+                FileOutputStream fOut = new FileOutputStream(oFile);
+                OutputStreamWriter myOutWriter = new OutputStreamWriter(fOut);
+                for( int i = 0; i < 10; i++ ){
+                    myOutWriter.append(String.format("%s - %f%%\n", IMAGENET_CLASSES[guesses.get(i).Index], guesses.get(i).Confidence * 100.0));
+                }
+                myOutWriter.close();
+                fOut.close();
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Failed to write guess file: " + e.getMessage());
+            }
+
+            Vector<PredictionGuess> top = new Vector<>();
+            for( int i = 0; i < 3; i++) {
+                top.add(guesses.get(i));
+            }
+            return top;
+        }
+
+        @Override
+        protected void onPostExecute(Vector<PredictionGuess> guess) {
+            Log.i(LOG_TAG, String.format("elapsed wall time: %d ms", SystemClock.uptimeMillis() - startTime));
+            for( int i = 0; i < guess.size(); i++){
+                Log.i(LOG_TAG, String.format("Guess[%f]: %s", guess.get(i).Confidence, IMAGENET_CLASSES[guess.get(i).Index]));
+            }
+            listener.onTaskCompleted(guess.get(0).Index);
+            super.onPostExecute(guess);
+        }
+    }
+
+    @Override
+    public void onTaskCompleted(int result) {
+        mOpenCvCameraView.togglePreview();
+        if (dialog != null) {
+            dialog.dismiss();
         }
     }
 }

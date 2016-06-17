@@ -208,9 +208,6 @@ public class ContourDetection {
         centroid_b.x /= Source.size();
         centroid_b.y /= Source.size();
 
-
-        Log.d("Contour", String.format("%f %f\n%f %f", centroid_a.x, centroid_a.y, centroid_b.x, centroid_b.y));
-
         // Remove Centroids
         List<Point> new_src = Source;
         List<Point> new_dst = Destination;
@@ -272,12 +269,9 @@ public class ContourDetection {
         return T;
     }
 
-    public static Mat RectifyImage(Mat input, List<Point3> Markers){
-        /*List<Point> QR = new ArrayList<>(), Other = new ArrayList<>();
+    public static void MatchPoints(List<Point3> Markers, List<Point> Source, List<Point> SourceTest, List<Point> Destination, List<Point> DestinationTest){
+        List<Point> QR = new ArrayList<>(), Other = new ArrayList<>();
         SeperateMarkers(Markers, QR, Other);
-
-        List<Point> src_points = new ArrayList<>(), dst_points = new ArrayList<>();
-        List<Point> src_tests = new ArrayList<>(), dst_tests = new ArrayList<>();
 
         if( QR.size() >= 2 && Other.size() >= 2 ){
             SortQR(QR, Other);
@@ -291,8 +285,8 @@ public class ContourDetection {
 
             for( int i = 0; i < 3; i++ ) {
                 if( Other.get(i).x >= 0 ){
-                    src_points.add(Other.get(i));
-                    dst_points.add(transpoints.get(i));
+                    Source.add(Other.get(i));
+                    Destination.add(transpoints.get(i));
                     pcount += 1;
                 }
             }
@@ -311,110 +305,62 @@ public class ContourDetection {
             for( int i = 0; i < 3; i++ ) {
                 if( QR.get(i).x >= 0 ){
                     if( pcount < 4){
-                        src_points.add(QR.get(i));
-                        dst_points.add(transqrpoints.get(i));
+                        Source.add(QR.get(i));
+                        Destination.add(transqrpoints.get(i));
                         pcount += 1;
                     }else{
-                        src_tests.add(QR.get(i));
-                        dst_tests.add(transqrpoints.get(i));
+                        SourceTest.add(QR.get(i));
+                        DestinationTest.add(transqrpoints.get(i));
                     }
                 }
             }
         }
 
-        if( src_points.size() < 4){
+        if( Source.size() < 4){
             // ERROR
         }
+    }
 
-
-        Mat src_mat=new Mat(4,1, CvType.CV_32FC2);
-        double buff[] = new double[(int)src_mat.total() * src_mat.channels()];
-        src_mat.get(0, 0, buff);
-        for( int i = 0; i < src_points.size(); i++ ){
-            buff[i*2+0] = src_points.get(i).x;
-            buff[i*2+1] = src_points.get(i).y;
-        }
-        src_mat.put(0, 0, buff);
-
-        Mat dst_mat=new Mat(4,1, CvType.CV_32FC2);
-        dst_mat.get(0, 0, buff);
-        for( int i = 0; i < dst_points.size(); i++ ){
-            buff[i*2+0] = dst_points.get(i).x;
-            buff[i*2+1] = dst_points.get(i).y;
-        }
-        dst_mat.put(0, 0, buff);
-
-        Mat TI = Imgproc.getPerspectiveTransform(src_mat, dst_mat);
-
-        double maxerror = 0;
-        for( int i = 0; i < src_tests.size(); i++ ) {
-            Mat point = new Mat(1, 4, CvType.CV_32FC2);
-            point.put(0, 0, src_tests.get(0).x, src_tests.get(0).y, 1.0);
-
-            Mat result = TI.mul(point.t());
-            result.put(0, 0, result.get(0,0)[0] / result.get(0,2)[0]);
-            result.put(0, 1, result.get(0,1)[0] / result.get(0,2)[0]);
-            result.put(0, 2, 1.0);
-
-            double eX = (result.get(0,0)[0] - dst_tests.get(i).x) * (result.get(0,0)[0] - dst_tests.get(i).x);
-            double eY = (result.get(0,1)[0] - dst_tests.get(i).y) * (result.get(0,1)[0] - dst_tests.get(i).y);
-
-            double error = Math.sqrt(eX + eY);
-            if( error > maxerror ) {
-                maxerror = error;
-            }
-        }
-
-        Log.d("Contour", String.format("Transformation maximum error: %d", maxerror));
-        if( maxerror > 15.0 ){
-            // ERROR
-        }
-
-        Mat im_warped = new Mat();
-        Imgproc.warpPerspective(input, im_warped, TI, new Size(690 + 40, 1230 + 20), Imgproc.BORDER_REPLICATE);
-
-        Mat tIn = Highgui.imread(templatefile, Imgproc.CV_LOAD_IMAGE_GRAYSCALE);
-
-        Mat template = new Mat();
-        tIn.convertTo(template, CvType.CV_32FC1, 255, 0);
-
-        Mat m = new Mat( new Size(1,3), CvType.CV_32FC1 );
-        double cBuff[] = new double[(int)m.total() * m.channels()];
-        m.get(0, 0, cBuff);
-        buff[0] = 0.163;
-        buff[1] = 0.837;
-        buff[2] = 1.0;
-        m.put(0, 0, cBuff);
+    public static Mat RectifyImage(Mat input, Mat Template){
+        Mat work = new Mat();
+        Imgproc.resize(input, work, new Size(770, (input.size().height * 770) / input.size().width), 0, 0, Imgproc.INTER_LINEAR );
 
         Mat im_warped_nb = new Mat();
-        Core.transform(im_warped, im_warped_nb, m);
+        Core.multiply(work, new Scalar(0.163f, 0.837f, 1.0f), im_warped_nb);
 
-        Mat fgim_warped_nb = new Mat();
+        Mat gim_warped = new Mat();
+        Imgproc.cvtColor(im_warped_nb, gim_warped, Imgproc.COLOR_BGR2GRAY);
+
+        Mat fgim_warped_nb = new Mat(im_warped_nb.size(), CvType.CV_32FC1);
         im_warped_nb.convertTo(fgim_warped_nb, CvType.CV_32FC1);
 
-        Mat result = new Mat();
-        Imgproc.matchTemplate(fgim_warped_nb, result, template, Imgproc.CV_TM_CCOEFF_NORMED);
+        int result_cols = im_warped_nb.cols() - Template.cols() + 1;
+        int result_rows = im_warped_nb.rows() - Template.rows() + 1;
+        Mat result = new Mat(result_rows, result_cols, CvType.CV_32FC1);
+
+        Imgproc.matchTemplate(gim_warped, Template, result, Imgproc.TM_CCOEFF_NORMED);
+        Core.normalize(result, result, 0, 1, Core.NORM_MINMAX, -1, new Mat());
 
         List<Point> cellPoints = new ArrayList<>();
 
         Mat cellmask = Mat.ones(result.size(), CvType.CV_8UC1);
         double cellmaxVal = 1;
-        double cellthr = 0.70;
+        double cellthr = 0.20;
 
         while( cellPoints.size() < 2 && cellmaxVal > cellthr) {
             Core.MinMaxLocResult mmResult = Core.minMaxLoc(result, cellmask);
             if( cellmaxVal <= cellthr ){
                 break;
             }
-            Log.d("Contour", String.format("Max cell point location %d, %d, %d", mmResult.maxLoc.x, mmResult.maxLoc.y, cellmaxVal));
+            Log.d("Contour", String.format("Max cell point location %f, %f, %f", mmResult.maxLoc.x, mmResult.maxLoc.y, cellmaxVal));
 
-            cellPoints.add(new Point(mmResult.maxLoc.x + template.size().width / 2.0 - 0, mmResult.maxLoc.y + template.size().height / 2.0 - 0));
+            cellPoints.add(new Point(mmResult.maxLoc.x + Template.size().width / 2.0 - 0, mmResult.maxLoc.y + Template.size().height / 2.0 - 0));
 
             List<Point> rect = new ArrayList<>();
-            rect.add( new Point(mmResult.maxLoc.x - template.size().width / 2, mmResult.maxLoc.y - template.size().height / 2));
-            rect.add( new Point(mmResult.maxLoc.x + template.size().width / 2, mmResult.maxLoc.y - template.size().height / 2));
-            rect.add( new Point(mmResult.maxLoc.x + template.size().width / 2, mmResult.maxLoc.y + template.size().height / 2));
-            rect.add( new Point(mmResult.maxLoc.x - template.size().width / 2, mmResult.maxLoc.y + template.size().height / 2));
+            rect.add( new Point(mmResult.maxLoc.x - Template.size().width / 2, mmResult.maxLoc.y - Template.size().height / 2));
+            rect.add( new Point(mmResult.maxLoc.x + Template.size().width / 2, mmResult.maxLoc.y - Template.size().height / 2));
+            rect.add( new Point(mmResult.maxLoc.x + Template.size().width / 2, mmResult.maxLoc.y + Template.size().height / 2));
+            rect.add( new Point(mmResult.maxLoc.x - Template.size().width / 2, mmResult.maxLoc.y + Template.size().height / 2));
 
             List<MatOfPoint> poly = new ArrayList<>();
             MatOfPoint mp = new MatOfPoint();
@@ -433,97 +379,48 @@ public class ContourDetection {
 
         if( dist1 > dist2){
             Point temp = cellPoints.get(0);
-            cellPoints.set(0, cellPoints.get(1);
+            cellPoints.set(0, cellPoints.get(1));
             cellPoints.set(1, temp);
             Log.d("Contour", String.format("Flipped %d, %d", cellPoints.get(0).x, cellPoints.get(0).y));
         }
 
-        int k = 0;
-        for( int i = 0; i < cellPoints.size(); i++ ) {
-            Core.circle(im_warped, new Point((int)cellPoints.get(i).x, (int)cellPoints.get(i).y), 17, new Scalar(255, 255, 255, 255), 2);
-            Core.putText(im_warped, String.format("%d",k), new Point((int)cellPoints.get(i).x, (int)cellPoints.get(i).y), Core.FONT_HERSHEY_PLAIN, 2.0, new Scalar(255, 255, 255))
-            k += 1;
-        }
-
         // do SVD for rotation/translation?
-        int artwork = -1;
-        comparePoints = [[[387, 214], [387, 1164]], [[387-17, 214], [387, 1164]], [[387+5, 214], [387-11, 1164]]]
+        List<Point> comparePoints = new ArrayList<>();
+        comparePoints.add(new Point(387, 214));
+        comparePoints.add(new Point(387, 1164));
+
+        Log.d("Contour", String.format("Wax Points %s actual %s",cellPoints.toString(), comparePoints.toString()));
+
+        Mat TICP = new Mat(3, 3, CvType.CV_32FC1);
         if( cellPoints.size() > 1 ) {
-            TCPA = [];
-            for( int i = 0; i < comparePoints.size(); i++ ) {
-                TCPA.append(RotTrans2Points(cellPoints, comparePoints[i]));
-            }
-
-            double minangle = Double.MAX_VALUE;
-            for( int i = 0; i < comparePoints.size(); i++ ) {
-                Log.d("Contour", String.format("data %f",TCPA[i].A[0][1]));
-                double iangl = Math.abs(Math.asin(Math.min(TCPA[i].A[0][1],1.0));
-                if( iangl < minangle ){
-                    minangle = iangl;
-                    artwork = i;
-                }
-            }
-
-            Log.d("Contour", String.format("Minimum angle was at index %d", artwork );
-            TCP = TCPA[artwork];
+            Mat TCP = TransformPoints(cellPoints, comparePoints);
 
             // get full matrix
-            Log.d("Contour", String.format("Mat",TCP.A[0][2],TCP.A[1][2]
-            Mat TICP = np.matrix([
-                [TCP.A[0][0], TCP.A[0][1], TCP.A[0][2]],
-                [TCP.A[1][0], TCP.A[1][1], TCP.A[1][2]],
-                [0, 0, 1]
-            ]);
+            Log.d("Contour", String.format("Mat %f %f",TCP.get(0,2)[0],TCP.get(1,2)[0]));
+
+            TICP.put(0, 0, TCP.get(0,0)[0], TCP.get(0,1)[0], TCP.get(0,2)[0]);
+            TICP.put(1, 0, TCP.get(1,0)[0], TCP.get(1,1)[0], TCP.get(1,2)[0]);
+            TICP.put(2, 0, 0, 0, 1);
         }
 
-        // put transformed markers on image
-        Mat pnt1 = new Mat();
-        pnt1.put(0, 0, cellPoints.get(0).x, cellPoints.get(0).y, 1.0);
-        Mat trans1 = TICP.mul(pnt1.t());
-
-        Mat pnt2 = new Mat();
-        pnt1.put(0, 0, cellPoints.get(1).x, cellPoints.get(1).y, 1.0);
-        Mat trans2 = TICP.mul(pnt2.t());
-
-        Core.line(im_warped, new Point((int)(trans1.get(0,0)[0])+10, (int)(trans1.get(0,1)[0])), new Point((int)(trans1.get(0,0)[0])-10, (int)(trans1.get(0,1)[0])), new Scalar(255,0,0), 2);
-        Core.line(im_warped, new Point((int)(trans1.get(0,0)[0]), (int)(trans1.get(0,1)[0])+10), new Point((int)(trans1.get(0,0)[0]), (int)(trans1.get(0,1)[0])-10), new Scalar(255,0,0), 2);
-        Core.line(im_warped, new Point((int)(trans2.get(0,0)[0])+10, (int)(trans2.get(0,1)[0])), new Point((int)(trans2.get(0,0)[0])-10, (int)(trans2.get(0,1)[0])), new Scalar(255,0,0), 2);
-        Core.line(im_warped, new Point((int)(trans2.get(0,0)[0]), (int)(trans2.get(0,1)[0])+10), new Point((int)(trans2.get(0,0)[0]), (int)(trans2.get(0,1)[0])-10), new Scalar(255,0,0), 2);
-
-        for(int i = 0; i < 13; i++ ) {
-            double px = 706 - 53 * i;
-
-            pnt1 = new Mat();
-            pnt1.put(0, 0, px, 339, 1.0);
-            trans1 = TICP.mul(pnt1.t());
-
-            pnt2 = new Mat();
-            pnt2.put(0, 0, px, 1095, 1.0);
-            trans2 = TICP.mul(pnt2.t());
-
-            Core.line(im_warped, new Point((int)(trans1.get(0,0)[0]),(int)(trans1.get(0,1)[0])),new Point((int)(trans2.get(0,0)[0]),(int)(trans2.get(0,1)[0])),new Scalar(0, 0, 255), 2);
-            Core.line(im_warped, new Point(px, 339), new Point(px, 1095), new Scalar(0, 255, 0), 2);
-        }
-
-        // actual transformed fringes
-        Mat TALL = TICP.mul(TI);
+        float[] tBuff = new float[9];
+        TICP.get(0, 0, tBuff);
+        Log.d("Contour", String.format("TICP %f %f %f \n %f %f %f \n %f %f %f", tBuff[0], tBuff[1], tBuff[2], tBuff[3], tBuff[4], tBuff[5], tBuff[6], tBuff[7], tBuff[8]));
 
         Mat fringe_warped = new Mat();
-        Imgproc.warpPerspective(input, fringe_warped, TALL, new Size(690 + 40, 1220), Imgproc.BORDER_REPLICATE);
+        Imgproc.warpPerspective(work, fringe_warped, TICP, new Size(690 + 40, 1220), Imgproc.BORDER_REPLICATE);
 
         for( int i = 0; i < 13; i++ ) {
             double px = 706 - 53 * i;
             Core.line(fringe_warped, new Point(px, 339 + 20), new Point(px, 1095), new Scalar(0, 255, 0), 1);
         }
 
-        targetloc = comparePoints[artwork];
-        Core.line(fringe_warped, new Point(targetloc[0][0],targetloc[0][1]-5), new Point(targetloc[0][0],targetloc[0][1]+5), new Scalar(0,255,0),1);
-        Core.line(fringe_warped, new Point(targetloc[0][0]-5,targetloc[0][1]), new Point(targetloc[0][0]+5,targetloc[0][1]), new Scalar(0,255,0),1);
-        Core.line(fringe_warped, new Point(targetloc[1][0],targetloc[1][1]-5), new Point(targetloc[1][0],targetloc[1][1]+5), new Scalar(0,255,0),1);
-        Core.line(fringe_warped, new Point(targetloc[1][0]-5,targetloc[1][1]), new Point(targetloc[1][0]+5,targetloc[1][1]), new Scalar(0,255,0),1);
+        Core.line(fringe_warped, new Point(comparePoints.get(0).x,comparePoints.get(0).y-5), new Point(comparePoints.get(0).x,comparePoints.get(0).y+5), new Scalar(0,255,0),1);
+        Core.line(fringe_warped, new Point(comparePoints.get(0).x-5,comparePoints.get(0).y), new Point(comparePoints.get(0).x+5,comparePoints.get(0).y), new Scalar(0,255,0),1);
+        Core.line(fringe_warped, new Point(comparePoints.get(1).x,comparePoints.get(1).y-5), new Point(comparePoints.get(1).x,comparePoints.get(1).y+5), new Scalar(0,255,0),1);
+        Core.line(fringe_warped, new Point(comparePoints.get(1).x-5,comparePoints.get(1).y), new Point(comparePoints.get(1).x+5,comparePoints.get(1).y), new Scalar(0,255,0),1);
 
-        return fringe_warped;*/
-        return new Mat();
+        return fringe_warped.submat(359, 849, 70, 710 );
     }
 
     public static void SeperateMarkers(List<Point3> Markers, List<Point> QR, List<Point> Other) {

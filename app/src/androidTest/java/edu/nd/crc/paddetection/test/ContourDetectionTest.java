@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import edu.nd.crc.paddetection.ContourDetection;
+import edu.nd.crc.paddetection.WhiteBalance;
 
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -166,6 +167,86 @@ public class ContourDetectionTest extends AndroidTestCase {
     }
 
     @Test
+    public void test_match_points(){
+        // Load Input
+        List<Point3> input = new ArrayList<>();
+        input.add(new Point3(721, 438, 16));
+        input.add(new Point3(58, 430, 16));
+        input.add(new Point3(59, 167, 22));
+        input.add(new Point3(61, 72, 22));
+        input.add(new Point3(156, 72, 22));
+
+        // Run Function
+        List<Point> Source = new ArrayList<>(), SourceTest = new ArrayList<>();
+        List<Point> Destination = new ArrayList<>(), DestinationTest = new ArrayList<>();
+
+        ContourDetection.MatchPoints(input, Source, SourceTest, Destination, DestinationTest);
+
+        // Expected
+        List<Point> eSource = new ArrayList<>();
+        eSource.add(new Point(438, 721));
+        eSource.add(new Point(430, 58));
+        eSource.add(new Point(72, 61));
+        eSource.add(new Point(72, 156));
+
+        for( Point e : eSource ){
+            boolean found = false;
+            for( Point a : Source ){
+                if( Math.abs(a.x - e.x) < 1e-5 && Math.abs(a.y - e.y) < 1e-5 ) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(String.format("Expected %s to match %s", eSource.toString(), Source.toString()), found);
+        }
+
+        List<Point> eSourceTest = new ArrayList<>();
+        eSourceTest.add(new Point(167, 59));
+
+        for( Point e : eSourceTest ){
+            boolean found = false;
+            for( Point a : SourceTest ){
+                if( Math.abs(a.x - e.x) < 1e-5 && Math.abs(a.y - e.y) < 1e-5 ) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(String.format("Expected %s to match %s", eSourceTest.toString(), eSourceTest.toString()), found);
+        }
+
+        List<Point> eDestination = new ArrayList<>();
+        eSource.add(new Point(686, 1163));
+        eSource.add(new Point(686, 77));
+        eSource.add(new Point(82, 64));
+        eSource.add(new Point(82, 226));
+
+        for( Point e : eDestination ){
+            boolean found = false;
+            for( Point a : Destination ){
+                if( Math.abs(a.x - e.x) < 1e-5 && Math.abs(a.y - e.y) < 1e-5 ) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(String.format("Expected %s to match %s", eDestination.toString(), Destination.toString()), found);
+        }
+
+        List<Point> eDestinationTest = new ArrayList<>();
+        eDestinationTest.add(new Point(244, 64));
+
+        for( Point e : eDestinationTest ){
+            boolean found = false;
+            for( Point a : DestinationTest ){
+                if( Math.abs(a.x - e.x) < 1e-5 && Math.abs(a.y - e.y) < 1e-5 ) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(String.format("Expected %s to match %s", eDestinationTest.toString(), DestinationTest.toString()), found);
+        }
+    }
+
+    @Test
     public void test_transform_points() {
         // Input
         List<Point> source = new ArrayList<>();
@@ -188,6 +269,52 @@ public class ContourDetectionTest extends AndroidTestCase {
         for( int i = 0; i < actual.rows(); i++ ) {
             for (int j = 0; j < actual.cols(); j++) {
                 assertThat(String.format("Value[%d,%d] Matches", i, j), actual.get(i, j)[0], closeTo(expected.get(i, j)[0], 1e-4));
+            }
+        }
+    }
+
+    @Test
+    public void test_rectify_image(){
+        // Parse input image file
+        Bitmap aBM = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/rectify-input.png"));
+        assertThat(aBM, is(notNullValue()));
+
+        // Convert to OpenCV matrix
+        Mat aMat = new Mat();
+        Utils.bitmapToMat(aBM, aMat);
+
+        Mat input = new Mat();
+        Imgproc.cvtColor(aMat, input, Imgproc.COLOR_BGRA2RGB);
+
+        // Parse input template file
+        Bitmap tBM = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/rectify-template.png"));
+        assertThat(tBM, is(notNullValue()));
+
+        // Convert to OpenCV matrix
+        Mat tMat = new Mat();
+        Utils.bitmapToMat(tBM, tMat);
+
+        Mat template = new Mat();
+        Imgproc.cvtColor(tMat, template, Imgproc.COLOR_BGRA2GRAY);
+
+        // Run white balance
+        Mat actual = ContourDetection.RectifyImage(input, template);
+
+        // Parse expected image file
+        Bitmap eBM = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/rectify-expected.png"));
+        assertThat(eBM, is(notNullValue()));
+
+        // Convert expected to OpenCV matrix
+        Mat eMat = new Mat();
+        Utils.bitmapToMat(eBM, eMat);
+
+        Mat expected = new Mat();
+        Imgproc.cvtColor(eMat, expected, Imgproc.COLOR_BGRA2RGB);
+
+        // Check that actual matrix matches expected matrix
+        for( int i = 0; i < actual.rows(); i++ ){
+            for( int j = 0; j < actual.cols(); j++ ) {
+                assertThat(String.format("Value[%d,%d] Matches", i, j), actual.get(i, j), is(expected.get(i, j)));
             }
         }
     }

@@ -193,10 +193,11 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             padImageDirectory.mkdirs();
 
             Mat mTemp = new Mat();
+            Mat result = new Mat();
             mTemp = input[0];
-            Imgproc.resize(mTemp, mTemp, new Size(960, 720));
+            Imgproc.resize(mTemp, result, new Size(1220, 730));
 
-            Mat result = new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
+            //Mat result = new Mat(Imgproc); //new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
             Core.flip(result.t(), result, 1);
 
             File outputFile = new File(padImageDirectory, "capture.jpeg");

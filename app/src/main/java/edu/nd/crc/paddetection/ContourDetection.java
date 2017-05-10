@@ -323,7 +323,8 @@ public class ContourDetection {
 
     public static Mat RectifyImage(Mat input, Mat Template){
         Mat work = new Mat();
-        Imgproc.resize(input, work, new Size(770, (input.size().height * 770) / input.size().width), 0, 0, Imgproc.INTER_LINEAR );
+        //Imgproc.resize(input, work, new Size(730, (input.size().height * 730) / input.size().width), 0, 0, Imgproc.INTER_LINEAR );
+        input.copyTo(work);
 
         Mat im_warped_nb = new Mat();
         Imgproc.cvtColor(work, im_warped_nb, Imgproc.COLOR_RGB2GRAY);

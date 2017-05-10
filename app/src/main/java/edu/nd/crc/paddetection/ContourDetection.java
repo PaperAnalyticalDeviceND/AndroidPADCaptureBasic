@@ -326,20 +326,25 @@ public class ContourDetection {
         Imgproc.resize(input, work, new Size(770, (input.size().height * 770) / input.size().width), 0, 0, Imgproc.INTER_LINEAR );
 
         Mat im_warped_nb = new Mat();
-        Core.multiply(work, new Scalar(0.163f, 0.837f, 1.0f), im_warped_nb);
+        Imgproc.cvtColor(work, im_warped_nb, Imgproc.COLOR_RGB2GRAY);
 
-        Mat gim_warped = new Mat();
-        Imgproc.cvtColor(im_warped_nb, gim_warped, Imgproc.COLOR_BGR2GRAY);
+        File SDlocation = Environment.getExternalStorageDirectory();
+        File padImageDirectory = new File(SDlocation + "/PAD/Test");
+        padImageDirectory.mkdirs();
 
-        Mat fgim_warped_nb = new Mat(im_warped_nb.size(), CvType.CV_32FC1);
-        im_warped_nb.convertTo(fgim_warped_nb, CvType.CV_32FC1);
+        Mat mTemp = new Mat();
+        File outputFile = new File(padImageDirectory, "image.jpeg");
+        Imgproc.cvtColor(im_warped_nb, mTemp, Imgproc.COLOR_GRAY2RGBA);
+        Highgui.imwrite(outputFile.getPath(), mTemp);
 
-        int result_cols = im_warped_nb.cols() - Template.cols() + 1;
-        int result_rows = im_warped_nb.rows() - Template.rows() + 1;
-        Mat result = new Mat(result_rows, result_cols, CvType.CV_32FC1);
+        File outputFiles = new File(padImageDirectory, "template.jpeg");
+        Imgproc.cvtColor(Template, mTemp, Imgproc.COLOR_GRAY2RGBA);
+        Highgui.imwrite(outputFiles.getPath(), mTemp);
 
-        Imgproc.matchTemplate(gim_warped, Template, result, Imgproc.TM_CCOEFF_NORMED);
-        Core.normalize(result, result, 0, 1, Core.NORM_MINMAX, -1, new Mat());
+
+
+        Mat result = new Mat( );
+        Imgproc.matchTemplate(im_warped_nb, Template, result, Imgproc.TM_CCOEFF_NORMED);
 
         List<Point> cellPoints = new ArrayList<>();
 
@@ -381,7 +386,7 @@ public class ContourDetection {
             Point temp = cellPoints.get(0);
             cellPoints.set(0, cellPoints.get(1));
             cellPoints.set(1, temp);
-            Log.d("Contour", String.format("Flipped %d, %d", cellPoints.get(0).x, cellPoints.get(0).y));
+            //Log.d("Contour", String.format("Flipped %d, %d", cellPoints.get(0).x, cellPoints.get(0).y));
         }
 
         // do SVD for rotation/translation?

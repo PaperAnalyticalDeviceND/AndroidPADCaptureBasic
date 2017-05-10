@@ -5,30 +5,23 @@ import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.Point;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.imgproc.Moments;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
+import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -100,10 +93,18 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
         caffeMobile = new CaffeMobile();
         caffeMobile.setNumThreads(4);
-        caffeMobile.loadModel("/sdcard/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", "/sdcard/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
+        File sdcard_path = Environment.getExternalStorageDirectory();
+        caffeMobile.loadModel(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
 
         float[] meanValues = {104, 117, 123};
         caffeMobile.setMean(meanValues);
+
+        /*Camera mCamera = Camera.open();
+        Camera.Parameters params = mCamera.getParameters();
+        List<Camera.Size> sizes = params.getSupportedPictureSizes();
+        for (Camera.Size size : sizes) {
+            Log.i("Camera", "Available resolution: "+size.width+" "+size.height);
+        }*/
 
         AssetManager am = this.getAssets();
         try {
@@ -192,7 +193,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             padImageDirectory.mkdirs();
 
             Mat mTemp = new Mat();
-            Mat result = new Mat(input[0], new Rect(105, 120, input[0].width()-172, input[0].height()-240));
+            mTemp = input[0];
+            Imgproc.resize(mTemp, mTemp, new Size(960, 720));
+
+            Mat result = new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
             Core.flip(result.t(), result, 1);
 
             File outputFile = new File(padImageDirectory, "capture.jpeg");
@@ -207,17 +211,21 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             });
 
             // Run white balance
-            Mat cropped = ContourDetection.RectifyImage(input[0], input[1]);
+            Mat cropped = ContourDetection.RectifyImage(mTemp, input[1]);
 
             File cFile = new File(padImageDirectory, "rectified.jpeg");
             Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(cFile.getPath(), mTemp);
 
-            Mat cResult = cropped.submat(359, 849, 70, 710 );
+            Mat cResult = cropped.submat(359, 849, 70, 710);
 
             File crFile = new File(padImageDirectory, "cropped.jpeg");
             Imgproc.cvtColor(cResult, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(crFile.getPath(), mTemp);
+
+            File resFile = new File(padImageDirectory, "resized.jpeg");
+            Imgproc.resize(mTemp, mTemp, new Size(227, 227));
+            Highgui.imwrite(resFile.getPath(), mTemp);
 
             runOnUiThread(new Runnable() {
                 @Override
@@ -226,7 +234,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 }
             });
 
-            float[] scores = caffeMobile.getConfidenceScore(crFile.getPath());
+            float[] scores = caffeMobile.getConfidenceScore(resFile.getPath());
 
             Vector<PredictionGuess> guesses = new Vector<>();
             for( int i = 0; i < scores.length; i++){
@@ -261,13 +269,16 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             for( int i = 0; i < guess.size(); i++){
                 Log.i(LOG_TAG, String.format("Guess[%f]: %s", guess.get(i).Confidence, IMAGENET_CLASSES[guess.get(i).Index]));
             }
-            listener.onTaskCompleted(guess.get(0).Index);
+            listener.onTaskCompleted(guess);
             super.onPostExecute(guess);
         }
     }
 
     @Override
-    public void onTaskCompleted(int result) {
+    public void onTaskCompleted(Vector<PredictionGuess> result) {
+        Context context = getApplicationContext();
+        Toast.makeText(context, String.format("Predicted Drugs\n %s - %f%%\n %s - %f%%\n %s - %f%%", IMAGENET_CLASSES[result.get(0).Index], result.get(0).Confidence * 100.0, IMAGENET_CLASSES[result.get(1).Index], result.get(1).Confidence * 100.0, IMAGENET_CLASSES[result.get(2).Index], result.get(2).Confidence * 100.0), Toast.LENGTH_LONG).show();
+
         mOpenCvCameraView.togglePreview();
         if (dialog != null) {
             dialog.dismiss();

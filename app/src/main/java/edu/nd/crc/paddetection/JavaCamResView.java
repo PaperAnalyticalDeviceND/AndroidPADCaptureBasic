@@ -21,7 +21,8 @@ public class JavaCamResView extends JavaCameraView {
     public void Setup(){
         StopPreview();
         disconnectCamera();
-        connectCamera(960, 720);
+        //connectCamera(960, 720);
+        connectCamera(1280, 768);
         StartPreview();
     }
 

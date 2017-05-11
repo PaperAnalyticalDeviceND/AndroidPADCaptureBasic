@@ -219,6 +219,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             }
 
             List<DataPoint> order = new Vector<>();
+            List<Float> diameter = new Vector<>();
             for( int i=0; i < Markers.size(); i++){
                 Imgproc.drawContours(mRgbaModified, contours, Markers.get(i), new Scalar(255, 200, 0), 2, 8, hierarchy, 0, new Point(0, 0));
 
@@ -233,9 +234,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 float dia = Math.max((float)box.width, (float)box.height) * 0.5f;
 
                 //only add it if sensible
-                //if(dia < 30 && dia > 15){
+                if(dia < 20 && dia > 5){
                     order.add(new DataPoint(i, dist, dia, mc));
-                //}
+                    diameter.add(dia);
+                }
             }
 
             for( int i=0; i < order.size(); i++){
@@ -280,32 +282,42 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //scale back to image size
             Point comDisplay = new Point(com.x * ratio, com.y * ratio);
 
-            Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 1, 8, 0);
+            Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
+
+            //reasonable COM?
+            Scalar markerColor;
+
+            if(com.x < 280 && com.x > 200 && com.y < 200 && com.y > 120 && pcountf > 5) {
+                markerColor = new Scalar(0, 255, 0);
+            }else{
+                markerColor = new Scalar(255, 0, 0);
+            }
 
             //count points
             int pcount = 0;
 
             //loop
-            for( int j=0; j<order.size(); j++){
-                if(order.get(j).valid){
+            for (int j = 0; j < order.size(); j++) {
+                if (order.get(j).valid) {
                     float dia = 0.0f;
                     Point mcd = order.get(j).Center;
 
                     //if top LHS then QR code marker
-                    if(mcd.x < (com.x + 30) && mcd.y < com.y){
-                        dia = 27;
-                    }else{
-                        dia = 20;
+                    if (mcd.y > (com.y - 30) && mcd.x < com.x) {
+                        dia = 30;
+                    } else {
+                        dia = 15;
                     }
 
-                    Log.i("Contours", String.format("Point: %d, %d, %d", (int)(mcd.y * ratio + 0.5), (int)(mcd.x * ratio  + 0.5), (int)(dia * ratio + 0.5)));
+                    Log.i("Contours", String.format("Point %d: %d, %d, %f, %f, %f", j, (int) (mcd.x * ratio + 0.5),
+                            (int) (mcd.y * ratio + 0.5), diameter.get(j), com.x * ratio, com.y * ratio));
 
                     //scale back to image size
                     mcd.x *= ratio;
                     mcd.y *= ratio;
-                    Core.circle(mRgbaModified, mcd, (int)dia, new Scalar(255, 0, 0), 1, 8, 0);
+                    Core.circle(mRgbaModified, mcd, (int) dia, markerColor, 2, 8, 0);
 
-                    if(pcount++ >= 5) break;
+                    if (pcount++ >= 5) break;
                 }
             }
 

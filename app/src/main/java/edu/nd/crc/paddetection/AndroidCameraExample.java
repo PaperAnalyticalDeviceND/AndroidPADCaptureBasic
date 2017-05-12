@@ -64,6 +64,11 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private Mat mRgbaModified;
     private static int IMAGE_WIDTH = 600;
 
+    //saved contour results
+    private boolean markersDetected = false;
+    private List<Point> points;
+    private List<Point> checks;
+
     @Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -78,12 +83,15 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         mOpenCvCameraView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dialog = ProgressDialog.show(AndroidCameraExample.this, "Predicting...", "Cropping Image", true);
 
-                CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
-                cnnTask.execute(mRgba, mTemplate);
+                if (markersDetected) {
+                    dialog = ProgressDialog.show(AndroidCameraExample.this, "Predicting...", "Cropping Image", true);
 
-                mOpenCvCameraView.togglePreview();
+                    CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
+                    cnnTask.execute(mRgba, mTemplate);
+
+                    mOpenCvCameraView.togglePreview();
+                }
             }
         });
 
@@ -174,13 +182,13 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     };
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-        mRgba = inputFrame.rgba();
+        //mRgba = inputFrame.rgba();
         mRgbaModified = inputFrame.rgba();
 
-        float ratio = (float)mRgba.size().width / (float)IMAGE_WIDTH;
+        float ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
 
         Mat work = new Mat();
-        Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgba.size().height * IMAGE_WIDTH) / mRgba.size().width), 0, 0, Imgproc.INTER_LINEAR );
+        Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR );
 
         //inputFrame.gray().copyTo(work);
 
@@ -281,16 +289,29 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             //scale back to image size
             Point comDisplay = new Point(com.x * ratio, com.y * ratio);
+            Point c_o_m = new Point(517, 429); //with offsets, subtract y from width of 768
+
+            double distance = Math.sqrt((com.x * ratio - 517) * (com.x * ratio - 517) + (com.y * ratio - 429) * (com.y * ratio - 429));
 
             Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
+            Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
 
             //reasonable COM?
             Scalar markerColor;
+            Boolean markersOK;
 
-            if(com.x < 280 && com.x > 200 && com.y < 200 && com.y > 120 && pcountf > 5) {
+            List<Point> QR = new Vector<>();
+            List<Point> Fiducial = new Vector<>();
+
+            if(distance < 50 && pcountf > 5) {
+            //if(com.x < 280 && com.x > 200 && com.y < 200 && com.y > 120 && pcountf > 5) {
                 markerColor = new Scalar(0, 255, 0);
+                markersOK = true;
+                //QR = new Vector<>();
+                //Fiducial = new Vector<>();
             }else{
                 markerColor = new Scalar(255, 0, 0);
+                markersOK = false;
             }
 
             //count points
@@ -299,18 +320,27 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //loop
             for (int j = 0; j < order.size(); j++) {
                 if (order.get(j).valid) {
-                    float dia = 0.0f;
+                    float dia;
+                    String targetType;
                     Point mcd = order.get(j).Center;
 
                     //if top LHS then QR code marker
                     if (mcd.y > (com.y - 30) && mcd.x < com.x) {
                         dia = 30;
+                        targetType = "QR";
+                        if(markersOK){
+                            QR.add(new Point(768 - (mcd.y * ratio), mcd.x * ratio));
+                        }
                     } else {
                         dia = 15;
+                        targetType = "Fiducial";
+                        if(markersOK){
+                            Fiducial.add(new Point(768 - (mcd.y * ratio), mcd.x * ratio));
+                        }
                     }
 
-                    Log.i("Contours", String.format("Point %d: %d, %d, %f, %f, %f", j, (int) (mcd.x * ratio + 0.5),
-                            (int) (mcd.y * ratio + 0.5), diameter.get(j), com.x * ratio, com.y * ratio));
+                    if (markersOK) Log.i("Contours", String.format("Tyep: %s, Point %d: %d, %d, %f, %f, %f, %f", targetType, j, (int) (mcd.x * ratio + 0.5),
+                            (int) (mcd.y * ratio + 0.5), diameter.get(j), com.x * ratio, com.y * ratio, distance));
 
                     //scale back to image size
                     mcd.x *= ratio;
@@ -319,6 +349,52 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
                     if (pcount++ >= 5) break;
                 }
+            }
+
+            //auto analyze?
+            if( markersOK ) {
+                //save successful frame
+                mRgba = inputFrame.rgba();
+
+                //sort points
+                int qrxhigh = -1, qryhigh = -1, qr1 = -1, fudxlow = -1, fudylow = -1, fud4 = -1;
+                double qrxmax = 0, qrymax = 0, fudxmin = 768, fudymin = 1280;
+                for(int i=0; i<3; i++){
+                    if(QR.get(i).x > qrxmax){
+                        qrxhigh = i;
+                        qrxmax = QR.get(i).x;
+                    }
+                    if(QR.get(i).y > qrymax){
+                        qryhigh = i;
+                        qrymax = QR.get(i).y;
+                    }
+                    if(Fiducial.get(i).x < fudxmin){
+                        fudxlow = i;
+                        fudxmin = Fiducial.get(i).x;
+                    }
+                    if(Fiducial.get(i).y < fudymin){
+                        fudylow = i;
+                        fudymin = Fiducial.get(i).y;
+                    }
+                }
+                for(int i=0; i<3; i++){
+                    if(i != qrxhigh && i != qryhigh) qr1 = i;
+                    if(i != fudxlow && i != fudylow) fud4 = i;
+                }
+
+                //create points
+                points = new Vector<>();
+                points.add(QR.get(qr1)); points.add(QR.get(qryhigh));
+                points.add(Fiducial.get(fudxlow)); points.add(Fiducial.get(fud4)); points.add(Fiducial.get(fudylow));
+                checks = new Vector<>();
+                checks.add(QR.get(qrxhigh));
+
+                //flag saved
+                markersDetected = true;
+                //mOpenCvCameraView.StopPreview();
+
+                //SwitchVisable = false;
+                //SaveVisable = RejectVisable = true;
             }
 
         }
@@ -367,7 +443,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Mat mTemp = new Mat();
             Mat result = new Mat();
             mTemp = input[0];
-            Imgproc.resize(mTemp, result, new Size(1220, 730));
+            Imgproc.resize(mTemp, result, new Size(1280, 768)); //should already be this size
+            //Point a = QR.get(0);
 
             //Mat result = new Mat(Imgproc); //new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
             Core.flip(result.t(), result, 1);
@@ -383,7 +460,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                   }
             });
 
-            // Run white balance
+            // rectify image
             Mat cropped = ContourDetection.RectifyImage(mTemp, input[1]);
 
             File cFile = new File(padImageDirectory, "rectified.jpeg");

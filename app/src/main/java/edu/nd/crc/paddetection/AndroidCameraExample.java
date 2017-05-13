@@ -478,10 +478,24 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(cFile.getPath(), mTemp);
 
+            //crop out results area
             Mat cResult = cropped.submat(359, 849, 71, 707);
 
+            //remove non trained lanes (AJ for this example)
+            Mat imgout = cropped.submat(359, 849, 71, 71 + 53 * 10);
+
+            //loop over lanes
+            for (int i=0, j=0; i<12; i++) {
+                if(i != 0 && i != 9) { //remove A and J
+                    cResult.submat(0, 490, 53 * i, 53 * (i + 1)).copyTo(imgout.submat(0, 490, 53 * j, 53 * (j + 1)));
+                    j++;
+                }
+            }
+
+            //save it
             File crFile = new File(padImageDirectory, "cropped.jpeg");
-            Imgproc.cvtColor(cResult, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            //Imgproc.cvtColor(cResult, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            Imgproc.cvtColor(imgout, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(crFile.getPath(), mTemp);
 
             File resFile = new File(padImageDirectory, "resized.jpeg");

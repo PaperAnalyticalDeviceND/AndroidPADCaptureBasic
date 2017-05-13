@@ -30,6 +30,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
+import android.app.AlertDialog;
 
 import com.sh1r0.caffe_android_lib.CaffeMobile;
 
@@ -93,6 +94,14 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                     cnnTask.execute(mRgba, mTemplate);
 
                     mOpenCvCameraView.togglePreview();
+                }else{
+                    AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
+                    alert.setTitle("Fiducials not aquired!");
+                    alert.setMessage("Please align fiducials with screen markers.\nCircles will turn green when aligned.");
+                    alert.setPositiveButton("OK",null);
+                    alert.show();
+                    //Context context = getApplicationContext();
+                    //Toast.makeText(context, "Fiducials not aquired!\nPlease align fiducials with screen markers.\nCircles will turn green when aligned.", Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -563,12 +572,21 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
     @Override
     public void onTaskCompleted(Vector<PredictionGuess> result) {
-        Context context = getApplicationContext();
-        Toast.makeText(context, String.format("Predicted Drugs\n %s - %f%%\n %s - %f%%\n %s - %f%%", IMAGENET_CLASSES[result.get(0).Index], result.get(0).Confidence * 100.0, IMAGENET_CLASSES[result.get(1).Index], result.get(1).Confidence * 100.0, IMAGENET_CLASSES[result.get(2).Index], result.get(2).Confidence * 100.0), Toast.LENGTH_LONG).show();
-
-        mOpenCvCameraView.togglePreview();
+        //get rid of predict dialog
         if (dialog != null) {
             dialog.dismiss();
         }
+
+        //show results
+        AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
+        alert.setTitle("Predicted Drug");
+        alert.setMessage(String.format(" %s - %f%%\n %s - %f%%\n %s - %f%%", IMAGENET_CLASSES[result.get(0).Index], result.get(0).Confidence * 100.0, IMAGENET_CLASSES[result.get(1).Index], result.get(1).Confidence * 100.0, IMAGENET_CLASSES[result.get(2).Index], result.get(2).Confidence * 100.0));
+        alert.setPositiveButton("OK",null);
+        alert.show();
+
+        //Context context = getApplicationContext();
+        //Toast.makeText(context, String.format("Predicted Drugs\n %s - %f%%\n %s - %f%%\n %s - %f%%", IMAGENET_CLASSES[result.get(0).Index], result.get(0).Confidence * 100.0, IMAGENET_CLASSES[result.get(1).Index], result.get(1).Confidence * 100.0, IMAGENET_CLASSES[result.get(2).Index], result.get(2).Confidence * 100.0), Toast.LENGTH_LONG).show();
+
+        mOpenCvCameraView.togglePreview();
     }
 }

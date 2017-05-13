@@ -420,6 +420,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                       //  points.get(5).x, points.get(5).y));
                 //flag saved
                 markersDetected = true;
+
                 //mOpenCvCameraView.StopPreview();
 
                 //SwitchVisable = false;

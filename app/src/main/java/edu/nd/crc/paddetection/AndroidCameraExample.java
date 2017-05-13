@@ -298,7 +298,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             //scale back to image size
             Point comDisplay = new Point(com.x * ratio, com.y * ratio);
-            Point c_o_m = new Point(517, 429); //with offsets, subtract y from width of 768
+            Point c_o_m = new Point(517, 400); //with offsets, subtract y from width of 768, was 429 for 768
 
             double distance = Math.sqrt((com.x * ratio - 517) * (com.x * ratio - 517) + (com.y * ratio - 429) * (com.y * ratio - 429));
 

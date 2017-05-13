@@ -57,7 +57,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         System.loadLibrary("opencv_java");
     }
 
-    private Mat mRgba, mTemplate;
+    private Mat mRgba = new Mat(), mTemplate;
     private String LOG_TAG = "PAD";
     private static String[] IMAGENET_CLASSES;
     private CaffeMobile caffeMobile;
@@ -189,7 +189,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     };
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-        mRgba = inputFrame.rgba();
+        //mRgba = inputFrame.rgba();
         mRgbaModified = inputFrame.rgba();
         //mRgbaModified.copyTo(mRgba);
         //Log.i("ImageSize", String.format("Image size %f: %f", (float)mRgbaModified.size().width, (float)mRgbaModified.size().height));
@@ -302,8 +302,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             double distance = Math.sqrt((com.x * ratio - 517) * (com.x * ratio - 517) + (com.y * ratio - 429) * (com.y * ratio - 429));
 
-            Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
-            Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
+            //Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
+            //Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
 
             //reasonable COM?
             Scalar markerColor;
@@ -321,6 +321,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             }else{
                 markerColor = new Scalar(255, 0, 0);
                 markersOK = false;
+
+                //draw COM circles if not used
+                Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
+                Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
             }
 
             //count points
@@ -363,6 +367,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //auto analyze?
             if( markersOK ) {
                 //save successful frame
+                mRgbaModified.copyTo(mRgba);
                 //mRgba = inputFrame.rgba();
 
                 //sort points

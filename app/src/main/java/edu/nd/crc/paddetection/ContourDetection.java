@@ -321,10 +321,25 @@ public class ContourDetection {
         }
     }
 
-    public static Mat RectifyImage(Mat input, Mat Template){
+    public static Mat RectifyImage(Mat input, Mat Template, Mat points){
+
+        //set artwork points
+        Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
+
+        float data[] = {82, 64, 85, 1163, 686, 1163, 686, 77};
+        destinationpoints.put(0, 0, data);
+
+        //get transformation
+        Mat TI = Imgproc.getPerspectiveTransform(points, destinationpoints);//TransformPoints(points, destinationpoints);
+
         Mat work = new Mat();
+        Imgproc.resize(input, work, new Size(720, 1280), 0, 0, Imgproc.INTER_LINEAR );
+
+        Imgproc.warpPerspective(work, work, TI, new Size(690 + 40, 1230 + 20));
+
+        //Mat work = new Mat();
         //Imgproc.resize(input, work, new Size(730, (input.size().height * 730) / input.size().width), 0, 0, Imgproc.INTER_LINEAR );
-        input.copyTo(work);
+        //input.copyTo(work);
 
         Mat im_warped_nb = new Mat();
         Imgproc.cvtColor(work, im_warped_nb, Imgproc.COLOR_RGB2GRAY);

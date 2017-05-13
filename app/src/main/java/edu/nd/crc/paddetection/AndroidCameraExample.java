@@ -1,6 +1,7 @@
 package edu.nd.crc.paddetection;
 
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
+import org.opencv.core.CvType;
 import org.opencv.core.MatOfPoint;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
@@ -66,8 +67,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
     //saved contour results
     private boolean markersDetected = false;
-    private List<Point> points;
-    private List<Point> checks;
+    private Mat points = new Mat(4, 2,CvType.CV_32F);
+    //private Mat checks = new Mat(6, 2,CvType.CV_32FC2);
 
     @Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -182,8 +183,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     };
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-        //mRgba = inputFrame.rgba();
+        mRgba = inputFrame.rgba();
         mRgbaModified = inputFrame.rgba();
+        //mRgbaModified.copyTo(mRgba);
+        //Log.i("ImageSize", String.format("Image size %f: %f", (float)mRgbaModified.size().width, (float)mRgbaModified.size().height));
 
         float ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
 
@@ -329,13 +332,13 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                         dia = 30;
                         targetType = "QR";
                         if(markersOK){
-                            QR.add(new Point(768 - (mcd.y * ratio), mcd.x * ratio));
+                            QR.add(new Point(720 - (mcd.y * ratio), mcd.x * ratio));
                         }
                     } else {
                         dia = 15;
                         targetType = "Fiducial";
                         if(markersOK){
-                            Fiducial.add(new Point(768 - (mcd.y * ratio), mcd.x * ratio));
+                            Fiducial.add(new Point(720 - (mcd.y * ratio), mcd.x * ratio));
                         }
                     }
 
@@ -354,11 +357,11 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //auto analyze?
             if( markersOK ) {
                 //save successful frame
-                mRgba = inputFrame.rgba();
+                //mRgba = inputFrame.rgba();
 
                 //sort points
                 int qrxhigh = -1, qryhigh = -1, qr1 = -1, fudxlow = -1, fudylow = -1, fud4 = -1;
-                double qrxmax = 0, qrymax = 0, fudxmin = 768, fudymin = 1280;
+                double qrxmax = 0, qrymax = 0, fudxmin = 720, fudymin = 1280;
                 for(int i=0; i<3; i++){
                     if(QR.get(i).x > qrxmax){
                         qrxhigh = i;
@@ -383,12 +386,18 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 }
 
                 //create points
-                points = new Vector<>();
-                points.add(QR.get(qr1)); points.add(QR.get(qryhigh));
-                points.add(Fiducial.get(fudxlow)); points.add(Fiducial.get(fud4)); points.add(Fiducial.get(fudylow));
-                checks = new Vector<>();
-                checks.add(QR.get(qrxhigh));
+                float data[] = {(float)QR.get(qr1).x, (float)QR.get(qr1).y,
+                        //(float)QR.get(qryhigh).x, (float)QR.get(qryhigh).y,
+                        (float)Fiducial.get(fudxlow).x, (float)Fiducial.get(fudxlow).y,
+                        (float)Fiducial.get(fud4).x, (float)Fiducial.get(fud4).y,
+                        (float)Fiducial.get(fudylow).x, (float)Fiducial.get(fudylow).y};//,
+                        //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
+                points.put(0, 0, data);
 
+                //Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
+                  //      points.get(0).x, points.get(0).y, points.get(1).x, points.get(1).y, points.get(2).x,
+                    //    points.get(2).y, points.get(3).x, points.get(3).y, points.get(4).x, points.get(4).y,
+                      //  points.get(5).x, points.get(5).y));
                 //flag saved
                 markersDetected = true;
                 //mOpenCvCameraView.StopPreview();
@@ -443,7 +452,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Mat mTemp = new Mat();
             Mat result = new Mat();
             mTemp = input[0];
-            Imgproc.resize(mTemp, result, new Size(1280, 768)); //should already be this size
+            Imgproc.resize(mTemp, result, new Size(1280, 720)); //should already be this size
             //Point a = QR.get(0);
 
             //Mat result = new Mat(Imgproc); //new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
@@ -460,14 +469,16 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                   }
             });
 
-            // rectify image
-            Mat cropped = ContourDetection.RectifyImage(mTemp, input[1]);
+            // rectify image, include QR/Fiducial points
+            Mat cropped = ContourDetection.RectifyImage(mTemp, input[1], points);
+            //Mat cropped = new Mat();// = ContourDetection.RectifyImage(mTemp, input[1], points);
+            //mTemp.copyTo(cropped);
 
             File cFile = new File(padImageDirectory, "rectified.jpeg");
             Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(cFile.getPath(), mTemp);
 
-            Mat cResult = cropped.submat(359, 849, 70, 710);
+            Mat cResult = cropped.submat(359, 849, 71, 707);
 
             File crFile = new File(padImageDirectory, "cropped.jpeg");
             Imgproc.cvtColor(cResult, mTemp, Imgproc.COLOR_BGRA2RGBA);

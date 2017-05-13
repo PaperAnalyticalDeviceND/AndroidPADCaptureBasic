@@ -69,6 +69,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private boolean markersDetected = false;
     private Mat points = new Mat(4, 2,CvType.CV_32F);
     //private Mat checks = new Mat(6, 2,CvType.CV_32FC2);
+    private Mat testMat = new Mat();
 
     @Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -102,6 +103,11 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         // Convert to OpenCV matrix
         Mat tMat = new Mat();
         Utils.bitmapToMat(tBM, tMat);
+
+        // Parse input test file
+        Bitmap tBM2 = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/test42401.png"));
+        // Convert to OpenCV matrix
+        Utils.bitmapToMat(tBM2, testMat);
 
         mTemplate = new Mat();
         Imgproc.cvtColor(tMat, mTemplate, Imgproc.COLOR_BGRA2GRAY);
@@ -453,7 +459,6 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Mat result = new Mat();
             mTemp = input[0];
             Imgproc.resize(mTemp, result, new Size(1280, 720)); //should already be this size
-            //Point a = QR.get(0);
 
             //Mat result = new Mat(Imgproc); //new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
             Core.flip(result.t(), result, 1);
@@ -500,6 +505,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             File resFile = new File(padImageDirectory, "resized.jpeg");
             Imgproc.resize(mTemp, mTemp, new Size(227, 227));
+            //test
+            //Imgproc.cvtColor(testMat, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(resFile.getPath(), mTemp);
 
             runOnUiThread(new Runnable() {
@@ -522,7 +529,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 oFile.createNewFile();
                 FileOutputStream fOut = new FileOutputStream(oFile);
                 OutputStreamWriter myOutWriter = new OutputStreamWriter(fOut);
-                for( int i = 0; i < 10; i++ ){
+                for( int i = 0; i < scores.length; i++ ){
                     myOutWriter.append(String.format("%s - %f%%\n", IMAGENET_CLASSES[guesses.get(i).Index], guesses.get(i).Confidence * 100.0));
                 }
                 myOutWriter.close();

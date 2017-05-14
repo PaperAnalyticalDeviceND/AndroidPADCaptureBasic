@@ -58,7 +58,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         System.loadLibrary("opencv_java");
     }
 
-    private Mat mRgba = new Mat(), mTemplate;
+    public Mat mRgba = new Mat();
+    private Mat mTemplate;
     private String LOG_TAG = "PAD";
     private static String[] IMAGENET_CLASSES;
     private CaffeMobile caffeMobile;
@@ -198,234 +199,22 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     };
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-        //mRgba = inputFrame.rgba();
         mRgbaModified = inputFrame.rgba();
-        //mRgbaModified.copyTo(mRgba);
-        //Log.i("ImageSize", String.format("Image size %f: %f", (float)mRgbaModified.size().width, (float)mRgbaModified.size().height));
-
-        float ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
 
         Mat work = new Mat();
         Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR );
 
-        //inputFrame.gray().copyTo(work);
+        points = ContourDetection.GetFudicialLocations(mRgbaModified, work);
 
-        Mat work_blur = new Mat();
-        Imgproc.blur(work, work_blur, new Size(2, 2));
+        //auto analyze?
+        if( !points.empty() ) {
+            //save successful frame
+            mRgbaModified.copyTo(mRgba);
 
+             //flag saved
+            markersDetected = true;
 
-        Mat edges = work.clone();
-        Imgproc.Canny(edges, edges, 40 , 150, 3, true);
-
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        if( contours.size() > 0 ) {
-            int iBuff[] = new int[ (int) (hierarchy.total() * hierarchy.channels()) ];
-            hierarchy.get(0, 0, iBuff);
-
-            Vector<Integer> Markers = new Vector<>();
-            for (int i = 0; i < contours.size(); i++) {
-                int k = i;
-                int c = 0;
-
-                while (iBuff[k*4+2] != -1) {
-                    k = iBuff[k*4+2];
-                    c = c + 1;
-                }
-
-                if (iBuff[k*4+2] != -1) {
-                    c = c + 1;
-                }
-
-                if (c >= 5) {
-                    Markers.add(i);
-                }
-            }
-
-            List<DataPoint> order = new Vector<>();
-            List<Float> diameter = new Vector<>();
-            for( int i=0; i < Markers.size(); i++){
-                Imgproc.drawContours(mRgbaModified, contours, Markers.get(i), new Scalar(255, 200, 0), 2, 8, hierarchy, 0, new Point(0, 0));
-
-                Moments mum = Imgproc.moments(contours.get(Markers.get(i)), false);
-                Point mc = new Point( mum.get_m10()/mum.get_m00() , mum.get_m01()/mum.get_m00() );
-
-                //calculate distance to nearest edge
-                float dist = Math.min(Math.min(Math.min((float)mc.x, (float)(IMAGE_WIDTH - mc.x)), (float)mc.y), (float)(inputFrame.rgba().size().height - mc.y));
-
-                Rect box = Imgproc.boundingRect(contours.get(Markers.get(i)));
-
-                float dia = Math.max((float)box.width, (float)box.height) * 0.5f;
-
-                //only add it if sensible
-                if(dia < 20 && dia > 5){
-                    order.add(new DataPoint(i, dist, dia, mc));
-                    diameter.add(dia);
-                }
-            }
-
-            for( int i=0; i < order.size(); i++){
-                if(order.get(i).valid){
-                    for( int j=i+1; j < order.size(); j++){
-                        if(order.get(j).valid){
-                            double ix = order.get(i).Center.x;
-                            double iy = order.get(i).Center.y;
-                            double jx = order.get(j).Center.x;
-                            double jy = order.get(j).Center.y;
-
-                            if(Math.abs(ix - jx) < 5 && Math.abs(iy - jy) < 5){
-                                if(order.get(i).Diameter < order.get(j).Diameter){
-                                    order.get(i).valid = false;
-                                    break;
-                                }else{
-                                    order.get(j).valid = false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Collections.sort(order);
-
-            //get center of mass
-            Point com = new Point(0.0, 0.0);
-            float pcountf = 0.0f;
-
-            for( int i=0; i<order.size(); i++){
-                if(order.get(i).valid){
-                    com.x += order.get(i).Center.x;
-                    com.y += order.get(i).Center.y;
-                    pcountf += 1.0;
-                }
-            }
-
-            com.x /= pcountf;
-            com.y /= pcountf;
-
-            //scale back to image size
-            Point comDisplay = new Point(com.x * ratio, com.y * ratio);
-            Point c_o_m = new Point(517, 400); //with offsets, subtract y from width of 768, was 429 for 768
-
-            double distance = Math.sqrt((com.x * ratio - 517) * (com.x * ratio - 517) + (com.y * ratio - 429) * (com.y * ratio - 429));
-
-            //Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
-            //Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
-
-            //reasonable COM?
-            Scalar markerColor;
-            Boolean markersOK;
-
-            List<Point> QR = new Vector<>();
-            List<Point> Fiducial = new Vector<>();
-
-            if(distance < 50 && pcountf > 5) {
-            //if(com.x < 280 && com.x > 200 && com.y < 200 && com.y > 120 && pcountf > 5) {
-                markerColor = new Scalar(0, 255, 0);
-                markersOK = true;
-                //QR = new Vector<>();
-                //Fiducial = new Vector<>();
-            }else{
-                markerColor = new Scalar(255, 0, 0);
-                markersOK = false;
-
-                //draw COM circles if not used
-                Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
-                Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
-            }
-
-            //count points
-            int pcount = 0;
-
-            //loop
-            for (int j = 0; j < order.size(); j++) {
-                if (order.get(j).valid) {
-                    float dia;
-                    String targetType;
-                    Point mcd = order.get(j).Center;
-
-                    //if top LHS then QR code marker
-                    if (mcd.y > (com.y - 30) && mcd.x < com.x) {
-                        dia = 30;
-                        targetType = "QR";
-                        if(markersOK){
-                            QR.add(new Point(720 - (mcd.y * ratio), mcd.x * ratio));
-                        }
-                    } else {
-                        dia = 15;
-                        targetType = "Fiducial";
-                        if(markersOK){
-                            Fiducial.add(new Point(720 - (mcd.y * ratio), mcd.x * ratio));
-                        }
-                    }
-
-                    if (markersOK) Log.i("Contours", String.format("Tyep: %s, Point %d: %d, %d, %f, %f, %f, %f", targetType, j, (int) (mcd.x * ratio + 0.5),
-                            (int) (mcd.y * ratio + 0.5), diameter.get(j), com.x * ratio, com.y * ratio, distance));
-
-                    //scale back to image size
-                    mcd.x *= ratio;
-                    mcd.y *= ratio;
-                    Core.circle(mRgbaModified, mcd, (int) dia, markerColor, 2, 8, 0);
-
-                    if (pcount++ >= 5) break;
-                }
-            }
-
-            //auto analyze?
-            if( markersOK ) {
-                //save successful frame
-                mRgbaModified.copyTo(mRgba);
-                //mRgba = inputFrame.rgba();
-
-                //sort points
-                int qrxhigh = -1, qryhigh = -1, qr1 = -1, fudxlow = -1, fudylow = -1, fud4 = -1;
-                double qrxmax = 0, qrymax = 0, fudxmin = 720, fudymin = 1280;
-                for(int i=0; i<3; i++){
-                    if(QR.get(i).x > qrxmax){
-                        qrxhigh = i;
-                        qrxmax = QR.get(i).x;
-                    }
-                    if(QR.get(i).y > qrymax){
-                        qryhigh = i;
-                        qrymax = QR.get(i).y;
-                    }
-                    if(Fiducial.get(i).x < fudxmin){
-                        fudxlow = i;
-                        fudxmin = Fiducial.get(i).x;
-                    }
-                    if(Fiducial.get(i).y < fudymin){
-                        fudylow = i;
-                        fudymin = Fiducial.get(i).y;
-                    }
-                }
-                for(int i=0; i<3; i++){
-                    if(i != qrxhigh && i != qryhigh) qr1 = i;
-                    if(i != fudxlow && i != fudylow) fud4 = i;
-                }
-
-                //create points
-                float data[] = {(float)QR.get(qr1).x, (float)QR.get(qr1).y,
-                        //(float)QR.get(qryhigh).x, (float)QR.get(qryhigh).y,
-                        (float)Fiducial.get(fudxlow).x, (float)Fiducial.get(fudxlow).y,
-                        (float)Fiducial.get(fud4).x, (float)Fiducial.get(fud4).y,
-                        (float)Fiducial.get(fudylow).x, (float)Fiducial.get(fudylow).y};//,
-                        //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
-                points.put(0, 0, data);
-
-                //Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
-                  //      points.get(0).x, points.get(0).y, points.get(1).x, points.get(1).y, points.get(2).x,
-                    //    points.get(2).y, points.get(3).x, points.get(3).y, points.get(4).x, points.get(4).y,
-                      //  points.get(5).x, points.get(5).y));
-                //flag saved
-                markersDetected = true;
-
-                //mOpenCvCameraView.StopPreview();
-
-                //SwitchVisable = false;
-                //SaveVisable = RejectVisable = true;
-            }
+            //mOpenCvCameraView.StopPreview();
 
         }
 

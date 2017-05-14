@@ -280,9 +280,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             // rectify image, include QR/Fiducial points
             Mat cropped = ContourDetection.RectifyImage(mTemp, input[1], points);
-            //Mat cropped = new Mat();// = ContourDetection.RectifyImage(mTemp, input[1], points);
-            //mTemp.copyTo(cropped);
 
+            //save rectified image
             File cFile = new File(padImageDirectory, "rectified.jpeg");
             Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(cFile.getPath(), mTemp);

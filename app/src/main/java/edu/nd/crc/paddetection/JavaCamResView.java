@@ -9,6 +9,8 @@ import android.hardware.Camera;
 import android.util.AttributeSet;
 import android.util.Log;
 
+import static android.hardware.Camera.Parameters.FLASH_MODE_TORCH;
+
 public class JavaCamResView extends JavaCameraView {
     private boolean mPreviewShowing;
 
@@ -23,6 +25,9 @@ public class JavaCamResView extends JavaCameraView {
         disconnectCamera();
         //connectCamera(960, 720);
         connectCamera(1280, 768);
+        Camera.Parameters params = this.mCamera.getParameters();
+        params.setFlashMode(FLASH_MODE_TORCH);
+        this.mCamera.setParameters(params);
         StartPreview();
     }
 

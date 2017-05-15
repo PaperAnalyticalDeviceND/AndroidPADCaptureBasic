@@ -94,7 +94,11 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                     CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
                     cnnTask.execute(mRgba, mTemplate);
 
+                    //stop processing images
                     mOpenCvCameraView.togglePreview();
+
+                    //flag that we have used this Green Circle image
+                    markersDetected = true;
                 }else{
                     AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
                     alert.setTitle("Fiducials not aquired!");
@@ -204,14 +208,18 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         Mat work = new Mat();
         Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR );
 
-        points = ContourDetection.GetFudicialLocations(mRgbaModified, work);
+        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points);
 
         //auto analyze?
-        if( !points.empty() ) {
+        if (fiducialsAcquired) {
+
+            Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f) %f, %f.",
+                    points.get(0,0)[0], points.get(0,1)[0], points.get(1,0)[0], points.get(1,1)[0],points.size().height, points.size().width));
+
             //save successful frame
             mRgbaModified.copyTo(mRgba);
 
-             //flag saved
+            //flag saved
             markersDetected = true;
 
             //mOpenCvCameraView.StopPreview();

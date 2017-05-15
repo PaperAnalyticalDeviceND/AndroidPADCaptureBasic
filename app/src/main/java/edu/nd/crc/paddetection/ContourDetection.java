@@ -53,10 +53,7 @@ public class ContourDetection {
     };
 
     //get fudicial points, mark onto current image (mRgbaModified)
-    public static Mat GetFudicialLocations(Mat mRgbaModified, Mat work){
-
-        //get Mat to return
-        Mat points = new Mat(4, 2,CvType.CV_32F);;
+    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points){
 
         //get analasis/real ratio
         float ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
@@ -257,6 +254,8 @@ public class ContourDetection {
                 //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
                 points.put(0, 0, data);
 
+                //flag acquired
+                return true;
                 //Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
                 //      points.get(0).x, points.get(0).y, points.get(1).x, points.get(1).y, points.get(2).x,
                 //    points.get(2).y, points.get(3).x, points.get(3).y, points.get(4).x, points.get(4).y,
@@ -266,8 +265,8 @@ public class ContourDetection {
 
         }
 
-        //return the points
-        return points;
+        //return status
+        return false;
     }
 
     public static Mat TransformPoints(List<Point> Source, List<Point> Destination) {

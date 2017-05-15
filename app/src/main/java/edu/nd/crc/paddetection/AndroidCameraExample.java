@@ -98,7 +98,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                     mOpenCvCameraView.togglePreview();
 
                     //flag that we have used this Green Circle image
-                    markersDetected = true;
+                    markersDetected = false;
                 }else{
                     AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
                     alert.setTitle("Fiducials not aquired!");

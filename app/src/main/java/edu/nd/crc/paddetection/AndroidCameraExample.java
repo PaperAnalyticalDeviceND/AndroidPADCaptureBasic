@@ -70,7 +70,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     //saved contour results
     private boolean markersDetected = false;
     private Mat points = new Mat(4, 2,CvType.CV_32F);
-    private Mat checks = new Mat(2, 2,CvType.CV_32FC2);
+    private Mat checks = new Mat(3, 1,CvType.CV_64F);
     private Mat testMat = new Mat();
 
     @Override
@@ -215,6 +215,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f) %f, %f.",
                     points.get(0,0)[0], points.get(0,1)[0], points.get(1,0)[0], points.get(1,1)[0],points.size().height, points.size().width));
+            //Log.i("ContoursOut", String.format("Points (%f, %f, %f).",
+              //      checks.get(0,0)[0], checks.get(0,1)[0], checks.get(0,2)[0]));
 
             //save successful frame
             mRgbaModified.copyTo(mRgba);
@@ -260,6 +262,9 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         protected Vector<PredictionGuess> doInBackground(Mat... input) {
             startTime = SystemClock.uptimeMillis();
 
+            //create top prediction list
+            Vector<PredictionGuess> top = new Vector<>();
+
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
             Date today = Calendar.getInstance().getTime();
 
@@ -287,7 +292,13 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             });
 
             // rectify image, include QR/Fiducial points
-            Mat cropped = ContourDetection.RectifyImage(mTemp, input[1], points);
+            Mat cropped = new Mat();
+            boolean transformedOk = ContourDetection.RectifyImage(mTemp, input[1], points, cropped, checks);
+
+            //error?
+            if(!transformedOk){
+                return top;
+            }
 
             //save rectified image
             File cFile = new File(padImageDirectory, "rectified.jpeg");
@@ -349,7 +360,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 Log.e(LOG_TAG, "Failed to write guess file: " + e.getMessage());
             }
 
-            Vector<PredictionGuess> top = new Vector<>();
+            //fill PredictionGuess vector
             for( int i = 0; i < 3; i++) {
                 top.add(guesses.get(i));
             }
@@ -374,10 +385,16 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             dialog.dismiss();
         }
 
-        //show results
+        //show results if OK
         AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
-        alert.setTitle("Predicted Drug");
-        alert.setMessage(String.format(" %s - %f%%\n %s - %f%%\n %s - %f%%", IMAGENET_CLASSES[result.get(0).Index], result.get(0).Confidence * 100.0, IMAGENET_CLASSES[result.get(1).Index], result.get(1).Confidence * 100.0, IMAGENET_CLASSES[result.get(2).Index], result.get(2).Confidence * 100.0));
+
+        if(result.size() < 3){
+            alert.setTitle("Error rectifying image!");
+            alert.setMessage(String.format("Please re-acquire image."));
+        }else{
+            alert.setTitle("Predicted Drug");
+            alert.setMessage(String.format(" %s - %f%%\n %s - %f%%\n %s - %f%%", IMAGENET_CLASSES[result.get(0).Index], result.get(0).Confidence * 100.0, IMAGENET_CLASSES[result.get(1).Index], result.get(1).Confidence * 100.0, IMAGENET_CLASSES[result.get(2).Index], result.get(2).Confidence * 100.0));
+        }
         alert.setPositiveButton("OK",null);
         alert.show();
 

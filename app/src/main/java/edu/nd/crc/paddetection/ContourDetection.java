@@ -254,8 +254,8 @@ public class ContourDetection {
                 //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
                 points.put(0, 0, data);
 
-                float checkdata[] = {(float)QR.get(qryhigh).x, (float)QR.get(qryhigh).y,
-                        (float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
+                double checkdata[] = {QR.get(qryhigh).x, QR.get(qryhigh).y, 1.0};//,
+                        //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y, 1.0f};
 
                 checks.put(0, 0, checkdata);
 
@@ -401,7 +401,7 @@ public class ContourDetection {
         }
     }
 
-    public static Mat RectifyImage(Mat input, Mat Template, Mat points){
+    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks){
 
         //set artwork points
         Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
@@ -409,13 +409,39 @@ public class ContourDetection {
         float data[] = {82, 64, 85, 1163, 686, 1163, 686, 77};
         destinationpoints.put(0, 0, data);
 
+        //and for checks
+        double checksdata[] = {82, 226};//, 244, 64};
+
         //get transformation
         Mat TI = Imgproc.getPerspectiveTransform(points, destinationpoints);//TransformPoints(points, destinationpoints);
+        //Log.i("ContoursOut", String.format("TI %s, %s.",TI.toString(), checks.toString()));
 
         Mat work = new Mat();
         Imgproc.resize(input, work, new Size(720, 1280), 0, 0, Imgproc.INTER_LINEAR );
 
         Imgproc.warpPerspective(work, work, TI, new Size(690 + 40, 1230 + 20));
+
+        //checks
+        Mat transformedChecks = new Mat(3, 1,CvType.CV_64F);
+        Core.gemm(TI, checks, 1, new Mat(), 0, transformedChecks, 0);
+
+        //get error norm
+        double norm2 = 0;
+        for(int i=0; i<2; i++){
+            double xerror = transformedChecks.get(i,0)[0] / transformedChecks.get(2,0)[0] - checksdata[i];
+            norm2 += xerror * xerror;
+        }
+
+        double norm = Math.sqrt(norm2);
+
+        Log.i("ContoursOut", String.format("Points (%f, %f, %f) %f.",
+                transformedChecks.get(0,0)[0], transformedChecks.get(1,0)[0],
+                transformedChecks.get(2,0)[0], norm));
+
+        //abort if transformation error
+        if(norm > 15){
+            return false;
+        }
 
         //Mat work = new Mat();
         //Imgproc.resize(input, work, new Size(730, (input.size().height * 730) / input.size().width), 0, 0, Imgproc.INTER_LINEAR );
@@ -473,6 +499,7 @@ public class ContourDetection {
         if( cellPoints.size() != 2) {
             Log.d("Contour", String.format("Error: Wax target not found with > 0.70 confidence."));
             // ERROR
+            return false;
         }
 
         double dist1 = ((cellPoints.get(0).x - 387) * (cellPoints.get(0).x - 387)) + ((cellPoints.get(0).y - 214) * (cellPoints.get(0).y - 214));
@@ -508,7 +535,7 @@ public class ContourDetection {
         TICP.get(0, 0, tBuff);
         Log.d("Contour", String.format("TICP %f %f %f \n %f %f %f \n %f %f %f", tBuff[0], tBuff[1], tBuff[2], tBuff[3], tBuff[4], tBuff[5], tBuff[6], tBuff[7], tBuff[8]));
 
-        Mat fringe_warped = new Mat();
+        //Mat fringe_warped = new Mat();
         Imgproc.warpPerspective(work, fringe_warped, TICP, new Size(690 + 40, 1220), Imgproc.BORDER_REPLICATE);
 
         for( int i = 0; i < 13; i++ ) {
@@ -521,7 +548,7 @@ public class ContourDetection {
         Core.line(fringe_warped, new Point(comparePoints.get(1).x,comparePoints.get(1).y-5), new Point(comparePoints.get(1).x,comparePoints.get(1).y+5), new Scalar(0,255,0),1);
         Core.line(fringe_warped, new Point(comparePoints.get(1).x-5,comparePoints.get(1).y), new Point(comparePoints.get(1).x+5,comparePoints.get(1).y), new Scalar(0,255,0),1);
 
-        return fringe_warped;
+        return true;
     }
 
     public static void SeperateMarkers(List<Point3> Markers, List<Point> QR, List<Point> Other) {

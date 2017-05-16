@@ -53,7 +53,7 @@ public class ContourDetection {
     };
 
     //get fudicial points, mark onto current image (mRgbaModified)
-    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points){
+    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks){
 
         //get analasis/real ratio
         float ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
@@ -253,6 +253,11 @@ public class ContourDetection {
                         (float)Fiducial.get(fudylow).x, (float)Fiducial.get(fudylow).y};//,
                 //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
                 points.put(0, 0, data);
+
+                float checkdata[] = {(float)QR.get(qryhigh).x, (float)QR.get(qryhigh).y,
+                        (float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
+
+                checks.put(0, 0, checkdata);
 
                 //flag acquired
                 return true;

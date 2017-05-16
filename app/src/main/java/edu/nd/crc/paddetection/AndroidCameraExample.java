@@ -70,7 +70,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     //saved contour results
     private boolean markersDetected = false;
     private Mat points = new Mat(4, 2,CvType.CV_32F);
-    //private Mat checks = new Mat(6, 2,CvType.CV_32FC2);
+    private Mat checks = new Mat(2, 2,CvType.CV_32FC2);
     private Mat testMat = new Mat();
 
     @Override
@@ -208,7 +208,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         Mat work = new Mat();
         Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR );
 
-        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points);
+        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks);
 
         //auto analyze?
         if (fiducialsAcquired) {

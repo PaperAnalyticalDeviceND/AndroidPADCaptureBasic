@@ -29,6 +29,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.Toast;
 import android.app.AlertDialog;
 
@@ -73,6 +74,34 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private Mat checks = new Mat(3, 1,CvType.CV_64F);
     private Mat testMat = new Mat();
 
+    //UI
+    private Button analyzeButton;
+
+    public void doAnalysis(View view) {
+        // Kabloey
+        if (markersDetected) {
+            dialog = ProgressDialog.show(AndroidCameraExample.this, "Predicting...", "Cropping Image", true);
+
+            CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
+            cnnTask.execute(mRgba, mTemplate);
+
+            //stop processing images
+            mOpenCvCameraView.togglePreview();
+
+            //flag that we have used this Green Circle image
+            markersDetected = false;
+
+        }else{
+            AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
+            alert.setTitle("Fiducials not aquired!");
+            alert.setMessage("Please align fiducials with screen markers.\nCircles will turn green when aligned.");
+            alert.setPositiveButton("OK",null);
+            alert.show();
+            //Context context = getApplicationContext();
+            //Toast.makeText(context, "Fiducials not aquired!\nPlease align fiducials with screen markers.\nCircles will turn green when aligned.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     @Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -84,32 +113,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 		mOpenCvCameraView.setCvCameraViewListener(this);
         mOpenCvCameraView.enableFpsMeter();
 
-        mOpenCvCameraView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                if (markersDetected) {
-                    dialog = ProgressDialog.show(AndroidCameraExample.this, "Predicting...", "Cropping Image", true);
-
-                    CNNTask cnnTask = new CNNTask(AndroidCameraExample.this);
-                    cnnTask.execute(mRgba, mTemplate);
-
-                    //stop processing images
-                    mOpenCvCameraView.togglePreview();
-
-                    //flag that we have used this Green Circle image
-                    markersDetected = false;
-                }else{
-                    AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
-                    alert.setTitle("Fiducials not aquired!");
-                    alert.setMessage("Please align fiducials with screen markers.\nCircles will turn green when aligned.");
-                    alert.setPositiveButton("OK",null);
-                    alert.show();
-                    //Context context = getApplicationContext();
-                    //Toast.makeText(context, "Fiducials not aquired!\nPlease align fiducials with screen markers.\nCircles will turn green when aligned.", Toast.LENGTH_LONG).show();
-                }
-            }
-        });
+        analyzeButton = (Button) findViewById(R.id.analyzeButton);
 
         // Parse input template file
         Bitmap tBM = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/template.png"));

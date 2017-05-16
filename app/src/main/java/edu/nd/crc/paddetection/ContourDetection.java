@@ -472,7 +472,7 @@ public class ContourDetection {
 
         Mat cellmask = Mat.ones(result.size(), CvType.CV_8UC1);
         double cellmaxVal = 1;
-        double cellthr = 0.20;
+        double cellthr = 0.70;
 
         while( cellPoints.size() < 2 && cellmaxVal > cellthr) {
             Core.MinMaxLocResult mmResult = Core.minMaxLoc(result, cellmask);
@@ -547,6 +547,10 @@ public class ContourDetection {
         Core.line(fringe_warped, new Point(comparePoints.get(0).x-5,comparePoints.get(0).y), new Point(comparePoints.get(0).x+5,comparePoints.get(0).y), new Scalar(0,255,0),1);
         Core.line(fringe_warped, new Point(comparePoints.get(1).x,comparePoints.get(1).y-5), new Point(comparePoints.get(1).x,comparePoints.get(1).y+5), new Scalar(0,255,0),1);
         Core.line(fringe_warped, new Point(comparePoints.get(1).x-5,comparePoints.get(1).y), new Point(comparePoints.get(1).x+5,comparePoints.get(1).y), new Scalar(0,255,0),1);
+
+        //wax markers
+        Core.circle(fringe_warped, new Point(387,214), 10, new Scalar(0,0,255), 2, 6, 0);
+        Core.circle(fringe_warped, new Point(387,1164), 10, new Scalar(0,0,255), 2, 6, 0);
 
         return true;
     }

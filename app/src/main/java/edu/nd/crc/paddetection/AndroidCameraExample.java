@@ -26,6 +26,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
+import android.support.design.widget.FloatingActionButton;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -75,7 +76,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private Mat testMat = new Mat();
 
     //UI
-    private Button analyzeButton;
+    private FloatingActionButton analyzeButton;
 
     public void doAnalysis(View view) {
         // Kabloey
@@ -122,7 +123,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 		mOpenCvCameraView.setCvCameraViewListener(this);
         mOpenCvCameraView.enableFpsMeter();
 
-        analyzeButton = (Button) findViewById(R.id.analyzeButton);
+        analyzeButton = (FloatingActionButton) findViewById(R.id.floatingAnalyze);
 
         // Parse input template file
         Bitmap tBM = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/template.png"));

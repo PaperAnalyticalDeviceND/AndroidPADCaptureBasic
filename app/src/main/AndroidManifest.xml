@@ -13,13 +13,13 @@
         android:icon="@drawable/ic_launcher_pads"
         android:label="PAD Analyze"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/Theme.AppCompat.Light">
 
         <activity
             android:name="edu.nd.crc.paddetection.AndroidCameraExample"
             android:label="PAD Analyze"
             android:screenOrientation="landscape"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
+            android:theme="@style/Theme.AppCompat.NoActionBar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

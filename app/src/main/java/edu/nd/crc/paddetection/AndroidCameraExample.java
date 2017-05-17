@@ -64,7 +64,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private String LOG_TAG = "PAD";
     private static String[] IMAGENET_CLASSES;
     private CaffeMobile caffeMobile;
-    private ProgressDialog dialog;
+    private ProgressDialog dialog, progdialog;
     private Mat mRgbaModified;
     private static int IMAGE_WIDTH = 600;
 
@@ -139,14 +139,6 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         mTemplate = new Mat();
         Imgproc.cvtColor(tMat, mTemplate, Imgproc.COLOR_BGRA2GRAY);
 
-        caffeMobile = new CaffeMobile();
-        caffeMobile.setNumThreads(4);
-        File sdcard_path = Environment.getExternalStorageDirectory();
-        caffeMobile.loadModel(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
-
-        float[] meanValues = {104, 117, 123};
-        caffeMobile.setMean(meanValues);
-
         /*Camera mCamera = Camera.open();
         Camera.Parameters params = mCamera.getParameters();
         List<Camera.Size> sizes = params.getSupportedPictureSizes();
@@ -166,6 +158,14 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        //throw up progress dialog
+        progdialog = ProgressDialog.show(AndroidCameraExample.this, "Loading Neural Network...", "Loading weights", true);
+
+        //load weights on separate task
+        LoadCaffeModelTask loadCaffeModelTask = new LoadCaffeModelTask();
+        loadCaffeModelTask.execute();
+
     }
 
 	@Override
@@ -349,7 +349,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             File resFile = new File(padImageDirectory, "resized.jpeg");
             Imgproc.resize(mTemp, mTemp, new Size(227, 227));
             //test
-            //Imgproc.cvtColor(testMat, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            Imgproc.cvtColor(testMat, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(resFile.getPath(), mTemp);
 
             runOnUiThread(new Runnable() {
@@ -424,4 +424,33 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
         mOpenCvCameraView.togglePreview();
     }
+
+    private class LoadCaffeModelTask extends AsyncTask<Void, Void, Void> {
+
+        public LoadCaffeModelTask() {
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            //load Caffe model
+            caffeMobile = new CaffeMobile();
+            caffeMobile.setNumThreads(4);
+            File sdcard_path = Environment.getExternalStorageDirectory();
+            caffeMobile.loadModel(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
+
+            float[] meanValues = {104, 117, 123};
+            caffeMobile.setMean(meanValues);
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            //remove progress dialog
+            progdialog.dismiss();
+
+            super.onPostExecute(result);
+        }
+    }
+
 }

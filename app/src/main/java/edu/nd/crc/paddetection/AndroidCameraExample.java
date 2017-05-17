@@ -314,6 +314,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             });
 
             // rectify image, include QR/Fiducial points
+            //Note: sending color corrected image to rectifyer
             Mat cropped = new Mat();
             boolean transformedOk = ContourDetection.RectifyImage(mTemp, input[1], points, cropped, checks);
 
@@ -324,8 +325,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             //save rectified image
             File cFile = new File(padImageDirectory, "rectified.jpeg");
-            Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
-            Highgui.imwrite(cFile.getPath(), mTemp);
+            //Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            Highgui.imwrite(cFile.getPath(), cropped);
 
             //crop out results area
             Mat cResult = cropped.submat(359, 849, 71, 707);
@@ -344,7 +345,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //save it
             File crFile = new File(padImageDirectory, "cropped.jpeg");
             //Imgproc.cvtColor(cResult, mTemp, Imgproc.COLOR_BGRA2RGBA);
-            Imgproc.cvtColor(imgout, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            //Imgproc.cvtColor(imgout, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            imgout.copyTo(mTemp);
             Highgui.imwrite(crFile.getPath(), mTemp);
 
             File resFile = new File(padImageDirectory, "resized.jpeg");

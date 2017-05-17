@@ -91,6 +91,15 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //flag that we have used this Green Circle image
             markersDetected = false;
 
+            //disable button until acquired
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    analyzeButton.setEnabled(false);
+                }
+            });
+
+
         }else{
             AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
             alert.setTitle("Fiducials not aquired!");
@@ -227,6 +236,14 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             //flag saved
             markersDetected = true;
+
+            //enable button once acquired
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    analyzeButton.setEnabled(true);
+                }
+            });
 
             //mOpenCvCameraView.StopPreview();
 

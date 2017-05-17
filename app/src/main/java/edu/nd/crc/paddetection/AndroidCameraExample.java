@@ -349,7 +349,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             File resFile = new File(padImageDirectory, "resized.jpeg");
             Imgproc.resize(mTemp, mTemp, new Size(227, 227));
             //test
-            Imgproc.cvtColor(testMat, mTemp, Imgproc.COLOR_BGRA2RGBA);
+            //Imgproc.cvtColor(testMat, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(resFile.getPath(), mTemp);
 
             runOnUiThread(new Runnable() {

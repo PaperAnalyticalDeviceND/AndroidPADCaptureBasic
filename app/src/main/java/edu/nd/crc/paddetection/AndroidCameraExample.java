@@ -465,6 +465,9 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             float[] meanValues = {126, 126, 126};//{104, 117, 123};
             caffeMobile.setMean(meanValues);
 
+            //file
+            //caffeMobile.setMean(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/mean.binaryproto");
+
             return null;
         }
 

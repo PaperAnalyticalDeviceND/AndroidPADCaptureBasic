@@ -550,8 +550,8 @@ public class ContourDetection {
         Core.line(fringe_warped, new Point(comparePoints.get(1).x-5,comparePoints.get(1).y), new Point(comparePoints.get(1).x+5,comparePoints.get(1).y), new Scalar(0,255,0),1);
 
         //wax markers
-        Core.circle(fringe_warped, new Point(387,214), 10, new Scalar(0,0,255), 2, 6, 0);
-        Core.circle(fringe_warped, new Point(387,1164), 10, new Scalar(0,0,255), 2, 6, 0);
+        //Core.circle(fringe_warped, new Point(387,214), 10, new Scalar(0,0,255), 2, 6, 0);
+        //Core.circle(fringe_warped, new Point(387,1164), 10, new Scalar(0,0,255), 2, 6, 0);
 
         return true;
     }

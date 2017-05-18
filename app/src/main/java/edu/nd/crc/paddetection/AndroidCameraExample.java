@@ -60,7 +60,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         System.loadLibrary("opencv_java");
     }
 
-    public Mat mRgba = new Mat();
+    public Mat mRgba = new Mat(), mRgbaTemp = new Mat();
     private Mat mTemplate;
     private String LOG_TAG = "PAD";
     private static String[] IMAGENET_CLASSES;
@@ -218,6 +218,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         mRgbaModified = inputFrame.rgba();
+        mRgbaModified.copyTo(mRgbaTemp);
 
         Mat work = new Mat();
         Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR );
@@ -233,7 +234,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
               //      checks.get(0,0)[0], checks.get(0,1)[0], checks.get(0,2)[0]));
 
             //save successful frame
-            mRgbaModified.copyTo(mRgba);
+            mRgbaTemp.copyTo(mRgba);
 
             //flag saved
             markersDetected = true;
@@ -462,11 +463,11 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             File sdcard_path = Environment.getExternalStorageDirectory();
             caffeMobile.loadModel(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
 
-            float[] meanValues = {126, 126, 126};//{104, 117, 123};
-            caffeMobile.setMean(meanValues);
+            //float[] meanValues = {126, 126, 126};//{104, 117, 123};
+            //caffeMobile.setMean(meanValues);
 
             //file
-            //caffeMobile.setMean(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/mean.binaryproto");
+            caffeMobile.setMean(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/imagenet_mean.binaryproto");
 
             return null;
         }

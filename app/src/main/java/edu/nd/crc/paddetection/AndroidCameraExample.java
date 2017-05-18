@@ -33,6 +33,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 import android.app.AlertDialog;
+import android.provider.MediaStore;
 
 import com.sh1r0.caffe_android_lib.CaffeMobile;
 
@@ -347,6 +348,14 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             File cFile = new File(padImageDirectory, "rectified.jpeg");
             //Imgproc.cvtColor(cropped, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(cFile.getPath(), cropped);
+
+            //gallery?
+            try {
+                MediaStore.Images.Media.insertImage(getContentResolver(), cFile.getPath(),
+                        df.format(today) , "Rectified Image");
+            } catch(Exception e) {
+                Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
+            }
 
             //crop out results area
             Mat cResult = cropped.submat(359, 849, 71, 707);

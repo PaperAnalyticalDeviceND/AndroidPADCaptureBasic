@@ -302,6 +302,25 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //Mat result = new Mat(Imgproc); //new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
             Core.flip(result.t(), result, 1);
 
+            //get stats/brighness
+            Scalar brightnessScalar = Core.mean(result);
+
+            double brightness = Math.sqrt((brightnessScalar.val[0] * brightnessScalar.val[0]) * 0.577 +
+                    (brightnessScalar.val[1] * brightnessScalar.val[1]) * 0.577 +
+                    (brightnessScalar.val[2] * brightnessScalar.val[2]) * 0.577);
+
+            //Log.i("ContoursOut", String.format("Mean %s, %f.",brightnessScalar.toString(), brightness));
+
+            //correct brightness
+            Scalar brightnessRatio = new Scalar(165.5 / brightness, 165.5 / brightness, 165.5 / brightness, 1);
+
+            Core.multiply(result, brightnessRatio, result);
+            /*brightnessScalar = Core.mean(result);
+            brightness = Math.sqrt((brightnessScalar.val[0] * brightnessScalar.val[0]) * 0.577 +
+                    (brightnessScalar.val[1] * brightnessScalar.val[1]) * 0.577 +
+                    (brightnessScalar.val[2] * brightnessScalar.val[2]) * 0.577);
+            Log.i("ContoursOut", String.format("Mean %s, %f.",brightnessScalar.toString(), brightness));*/
+
             File outputFile = new File(padImageDirectory, "capture.jpeg");
             Imgproc.cvtColor(result, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(outputFile.getPath(), mTemp);
@@ -354,6 +373,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //test
             //Imgproc.cvtColor(testMat, mTemp, Imgproc.COLOR_BGRA2RGBA);
             Highgui.imwrite(resFile.getPath(), mTemp);
+
+            Log.i("ContoursOut", String.format("Catagorized image at %s.",resFile.getPath()));
 
             runOnUiThread(new Runnable() {
                 @Override
@@ -441,7 +462,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             File sdcard_path = Environment.getExternalStorageDirectory();
             caffeMobile.loadModel(sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/deploy.prototxt", sdcard_path+"/caffe_mobile/bvlc_reference_caffenet/Sandipan1_Full_26Drugs_iter_90000.caffemodel");
 
-            float[] meanValues = {104, 117, 123};
+            float[] meanValues = {126, 126, 126};//{104, 117, 123};
             caffeMobile.setMean(meanValues);
 
             return null;

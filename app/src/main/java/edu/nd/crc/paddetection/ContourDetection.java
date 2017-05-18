@@ -421,6 +421,7 @@ public class ContourDetection {
 
         Imgproc.warpPerspective(work, work, TI, new Size(690 + 40, 1230 + 20));
 
+
         //checks
         Mat transformedChecks = new Mat(3, 1,CvType.CV_64F);
         Core.gemm(TI, checks, 1, new Mat(), 0, transformedChecks, 0);

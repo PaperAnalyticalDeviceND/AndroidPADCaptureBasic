@@ -107,8 +107,10 @@ public class ContourDetection {
                 float dia = Math.max((float)box.width, (float)box.height) * 0.5f;
 
                 //only add it if sensible
-                if(dia < 20 && dia > 5){
+                //Image is now 600 wide (x) and 337 high (y). Wax fiducials in y region 130-210 and z region 100-550.
+                if(dia < 20 && dia > 5 && !(mc.x > 100 && mc.y > 130 && mc.y < 210)){
                     order.add(new DataPoint(i, dist, dia, mc));
+                    //Log.i("ContoursOut", "Location " + mc.x + ", " + mc.y);
                     diameter.add(dia);
                 }
             }

@@ -40,6 +40,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.provider.MediaStore;
 
 import com.sh1r0.caffe_android_lib.CaffeMobile;
@@ -62,6 +63,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Vector;
+import android.os.Handler;
+import android.os.Looper;
 
 public class AndroidCameraExample extends Activity implements CvCameraViewListener2, CNNListener {
 	private JavaCamResView mOpenCvCameraView;
@@ -93,6 +96,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private Mat points = new Mat(4, 2,CvType.CV_32F);
     private Mat checks = new Mat(3, 1,CvType.CV_64F);
     private Mat testMat = new Mat();
+    private Mat cropped = new Mat();
 
     //UI
     private FloatingActionButton analyzeButton;
@@ -344,6 +348,72 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 }
             });
 
+            // rectify image, include QR/Fiducial points
+            //Note: sending color corrected image to rectifyer
+            //Mat cropped = new Mat();
+            boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, points, cropped, checks);
+
+            //error?
+            if(transformedOk){
+                Log.i("ContoursOut", String.format("Got here 2"));
+
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.d("UI thread", "I am the UI thread");
+
+                        AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
+                        alert.setTitle("Fiducials aquired!");
+                        alert.setMessage("Store PAD image?");
+                        alert.setPositiveButton("OK",
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                                        Date today = Calendar.getInstance().getTime();
+
+                                        File SDlocation = Environment.getExternalStorageDirectory();
+                                        File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
+                                        padImageDirectory.mkdirs();
+
+                                        //save rectified image
+                                        File cFile = new File(padImageDirectory, "rectified.jpeg");
+                                        Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGBA);
+                                        Highgui.imwrite(cFile.getPath(), cropped);
+
+                                        //gallery?
+                                        try {
+                                            MediaStore.Images.Media.insertImage(getContentResolver(), cFile.getPath(),
+                                                    df.format(today) , "Rectified Image");
+                                        } catch(Exception e) {
+                                            Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
+                                        }
+
+                                        //start preview
+                                        mOpenCvCameraView.StartPreview();
+
+                                        dialog.dismiss();
+                                    }
+                                }
+                        );
+                        alert.setNegativeButton("Cancel",
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        //start preview
+                                        mOpenCvCameraView.StartPreview();
+
+                                        dialog.dismiss();
+                                    }
+                                }
+                        );
+                        alert.show();
+                    }
+                });
+                //new Thread(new Task()).start();
+
+                //stop preview
+                mOpenCvCameraView.StopPreview();
+            }
+
             //mOpenCvCameraView.StopPreview();
 
         }
@@ -384,6 +454,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         protected Vector<PredictionGuess> doInBackground(Mat... input) {
             startTime = SystemClock.uptimeMillis();
 
+            Log.i("ContoursOut", String.format("Got here 1"));
             //create top prediction list
             Vector<PredictionGuess> top = new Vector<>();
 
@@ -397,7 +468,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Mat mTemp = new Mat();
             Mat result = new Mat();
             mTemp = input[0];
-            Imgproc.resize(mTemp, result, new Size(1280, 720)); //should already be this size
+            /*Imgproc.resize(mTemp, result, new Size(1280, 720)); //should already be this size
 
             //Mat result = new Mat(Imgproc); //new Mat(mTemp, new Rect(105, 120, mTemp.width()-172, mTemp.height()-240));
             Core.flip(result.t(), result, 1);
@@ -415,7 +486,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             float image_brightness = IMAGENET_BRIGHTNESS.get(0);
             Scalar brightnessRatio = new Scalar(image_brightness / brightness, image_brightness / brightness, image_brightness / brightness, 1);
 
-            Core.multiply(result, brightnessRatio, result);
+            Core.multiply(result, brightnessRatio, result);*/
             /*brightnessScalar = Core.mean(result);
             brightness = Math.sqrt((brightnessScalar.val[0] * brightnessScalar.val[0]) * 0.577 +
                     (brightnessScalar.val[1] * brightnessScalar.val[1]) * 0.577 +
@@ -436,7 +507,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             // rectify image, include QR/Fiducial points
             //Note: sending color corrected image to rectifyer
             Mat cropped = new Mat();
-            boolean transformedOk = ContourDetection.RectifyImage(mTemp, input[1], points, cropped, checks);
+            boolean transformedOk = ContourDetection.RectifyImage(input[0], input[1], points, cropped, checks);
 
             //error?
             if(!transformedOk){

@@ -32,7 +32,7 @@ import java.util.Vector;
  * Created by Omegaice on 6/16/16.
  */
 public class ContourDetection {
-    private static final double IMAGE_WIDTH = 600.0;
+    private static final double IMAGE_WIDTH = 720.0;
 
     public static class DataPoint implements Comparable<DataPoint>  {
         public int i;
@@ -53,16 +53,26 @@ public class ContourDetection {
     };
 
     //get fudicial points, mark onto current image (mRgbaModified)
-    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks){
+    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks, boolean portrait){
 
         //get analasis/real ratio
-        float ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
+        float ratio;
 
-        Mat work_blur = new Mat();
-        Imgproc.blur(work, work_blur, new Size(2, 2));
+        if(portrait){
+            ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
+        }else{
+            ratio = (float)mRgbaModified.size().height / (float)IMAGE_WIDTH;
+        }
 
+        //ratio = (float)1.5;
+
+        Log.i("ContoursOut", "Sizes " + work.size().width + " height " + work.size().height + " ratio " + ratio);
+        //Mat work_blur = new Mat();
         Mat edges = work.clone();
-        Imgproc.Canny(edges, edges, 40 , 150, 3, true);
+        Imgproc.blur(edges, edges, new Size(4, 4));
+
+        //Mat edges = work.clone();
+        Imgproc.Canny(edges, edges, 25 , 75, 3, true);
 
         List<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
@@ -92,6 +102,8 @@ public class ContourDetection {
             }
 
             List<DataPoint> order = new Vector<>();
+            List<DataPoint> outer = new Vector<>();
+            List<DataPoint> qr = new Vector<>();
             List<Float> diameter = new Vector<>();
             for( int i=0; i < Markers.size(); i++){
                 //Imgproc.drawContours(mRgbaModified, contours, Markers.get(i), new Scalar(255, 200, 0), 2, 8, hierarchy, 0, new Point(0, 0));
@@ -105,17 +117,74 @@ public class ContourDetection {
                 Rect box = Imgproc.boundingRect(contours.get(Markers.get(i)));
 
                 float dia = Math.max((float)box.width, (float)box.height) * 0.5f;
-
+                float asprat = Math.max((float)box.width/(float)box.height, (float)box.height/(float)box.width);
                 //only add it if sensible
                 //Image is now 600 wide (x) and 337 high (y). Wax fiducials in y region 130-210 and z region 100-550.
-                if(dia < 20 && dia > 5 && !(mc.x > 100 && mc.y > 130 && mc.y < 210)){
-                    order.add(new DataPoint(i, dist, dia, mc));
+                boolean nexcluded = !(mc.x > 300 && mc.x < 420);
+
+                /*if(portrait) {
+                    nexcluded = !(mc.x > 300 && mc.x < 420);
+                }else{
+                    nexcluded = !(mc.y > 300 && mc.y < 420);
+                }*/
+
+                //test valid point
+                if(asprat < 1.5 && dia < 45 && dia > 5 && nexcluded){
+                    //check of nearby points
+                    boolean pnearby = false;
+
+                    //loop over current points
+                    for(int j=0; j<order.size(); j++){
+                        float diff = (float)Math.sqrt((order.get(j).Center.x - mc.x) * (order.get(j).Center.x - mc.x) + (order.get(j).Center.y - mc.y) * (order.get(j).Center.y - mc.y));
+                        if(diff < 10){
+                            //Log.i("ContoursOut", "Dup Location " + mc.x + ", " + mc.y);
+                            pnearby = true;
+                            break;
+                        }
+                    }
+
+                    //if unique point, add it.
+                    if(!pnearby) {
+                        Log.i("ContoursOut", "Org Location " + mc.x + ", " + mc.y + " dia " + dia);
+                        //save point
+                        //DataPoint dat = [i, mc.x, mc.y, dia];
+                        order.add(new DataPoint(i, dist, dia, mc));
+
+                        boolean isQR = mc.y < 640 && mc.x < 320;
+
+                        /*if(portrait){
+                            isQR = mc.y < 640 && mc.x < 320;
+                        }else{
+                            isQR = mc.x < 640 && mc.y > 320;
+                        }*/
+
+                        //draw contour
+                        //QR or outer?
+                        Scalar color = new Scalar(0, 255, 0, 255);
+                        //if (mc.y < 640 && mc.x < 320) {
+                        if ( isQR ){ //mc.x < 640 && mc.y > 320) {
+                            qr.add(new DataPoint(i, dist, dia, mc));
+                            color = new Scalar(255, 0, 0, 255);
+                        } else {
+                            outer.add(new DataPoint(i, dist, dia, mc));
+                        }
+
+                        //draw COM circles if not used
+                        //scale back to image size
+                        Point comDisplay;
+                        if(portrait) {
+                            comDisplay = new Point(mc.x * ratio, mc.y * ratio);
+                        }else{
+                            comDisplay = new Point((mc.y) * ratio, (720-mc.x) * ratio);
+                        }
+                        Core.circle(mRgbaModified, comDisplay, 10, color, 2, 8, 0);
+
+                    }
                     //Log.i("ContoursOut", "Location " + mc.x + ", " + mc.y);
-                    diameter.add(dia);
-                }
+                 }
             }
 
-            for( int i=0; i < order.size(); i++){
+            /*for( int i=0; i < order.size(); i++){
                 if(order.get(i).valid){
                     for( int j=i+1; j < order.size(); j++){
                         if(order.get(j).valid){
@@ -135,9 +204,9 @@ public class ContourDetection {
                         }
                     }
                 }
-            }
+            }*/
 
-            Collections.sort(order);
+            /*Collections.sort(order);
 
             //get center of mass
             Point com = new Point(0.0, 0.0);
@@ -180,9 +249,9 @@ public class ContourDetection {
                 //draw COM circles if not used
                 Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
                 Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
-            }
+            }*/
 
-            //count points
+            /*//count points
             int pcount = 0;
 
             //loop
@@ -268,12 +337,102 @@ public class ContourDetection {
                 //    points.get(2).y, points.get(3).x, points.get(3).y, points.get(4).x, points.get(4).y,
                 //  points.get(5).x, points.get(5).y));
                 //flag saved
-            }
+            }*/
 
         }
 
         //return status
         return false;
+    }
+
+    //order outer and qr points
+    private static List<Point> order_points(List<Point> outer, List<Point> qr, float ratio) {
+        //return data
+        List<Point> src_points = new Vector<>();
+
+        //sort outer~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //transpoints = [[85, 1163], [686, 1163], [686, 77]];
+        //max point, bottom RHS
+        double odist_0_max= 0;
+        int oindx = 0;
+        for(int i=0; i<3; i++){
+            double otmp_dist_0 = outer.get(i).x * outer.get(i).x + outer.get(i).y * outer.get(i).y;
+            if(otmp_dist_0 > odist_0_max){
+                odist_0_max = otmp_dist_0;
+                oindx = i;
+            }
+        }
+
+        //lowest x (LHS)
+        double odist_x_min = 9999999;
+        int oindxx = 0;
+        for(int i=0; i<3; i++){
+            if(i == oindx) continue;
+
+            if(outer.get(i).x < odist_x_min){
+                odist_x_min = outer.get(i).x;
+                oindxx = i;
+            }
+        }
+
+        //LHS outer fiducial
+        //src_points.push(outer[oindxx]);
+        src_points.add(new Point(outer.get(oindxx).x * ratio, outer.get(oindxx).y * ratio));
+
+        //saved max fudicial
+        //src_points.push(outer[oindx]);
+        src_points.add(new Point(outer.get(oindx).x * ratio, outer.get(oindx).y * ratio));
+
+        //remaining fiducial
+        for(int i=0; i<3; i++){
+            if(i == oindx || i == oindxx) continue;
+            //LHS QR fiducial
+            //src_points.push(outer[i]);
+            src_points.add(new Point(outer.get(i).x * ratio, outer.get(i).y * ratio));
+        }
+
+        //sort qr~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //transqrpoints = [[82, 64], [82, 226], [244, 64]];
+        double dist_0_min = 9999999;
+        int indx = 0;
+        for(int i=0; i<3; i++){
+            double tmp_dist_0 = qr.get(i).x * qr.get(i).x + qr.get(i).y * qr.get(i).y;
+            if(tmp_dist_0 < dist_0_min){
+                dist_0_min = tmp_dist_0;
+                indx = i;
+            }
+        }
+
+        //min fiducial, top LHS
+        //src_points.push(qr[indx]);
+        src_points.add(new Point(qr.get(indx).x * ratio, qr.get(indx).y * ratio));
+
+        //smallest x
+        double dist_x_min = 9999999;
+        int indxx = 0;
+        for(int i=0; i<3; i++){
+            if(i == indx) continue;
+
+            if(qr.get(i).x < dist_x_min){
+                dist_x_min = qr.get(i).x;
+                indxx = i;
+            }
+        }
+
+        //LHS QR fiducial
+        //src_points.push(qr[indxx]);
+        src_points.add(new Point(qr.get(indxx).x * ratio, qr.get(indxx).y * ratio));
+
+        //remaining fiducial
+        for(int i=0; i<3; i++){
+            if(i == indx || i == indxx) continue;
+            //LHS QR fiducial
+            //src_points.push(qr[i]);
+            src_points.add(new Point(qr.get(i).x * ratio, qr.get(i).y * ratio));
+        }
+
+        //return points
+        return src_points;
     }
 
     public static Mat TransformPoints(List<Point> Source, List<Point> Destination) {

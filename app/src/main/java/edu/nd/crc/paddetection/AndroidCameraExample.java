@@ -86,7 +86,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private ArrayList<CaffeMobile> caffeMobile = new ArrayList<>();
     private ProgressDialog dialog, progdialog;
     private Mat mRgbaModified;
-    private static int IMAGE_WIDTH = 600;
+    private static int IMAGE_WIDTH = 720;
 
     //saved contour results
     private boolean markersDetected = false;
@@ -250,11 +250,11 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         }
 
         //throw up progress dialog
-        progdialog = ProgressDialog.show(AndroidCameraExample.this, "Loading Neural Network: " + IMAGENET_DESCRIPTION.get(0), "Loading weights", true);
+        //progdialog = ProgressDialog.show(AndroidCameraExample.this, "Loading Neural Network: " + IMAGENET_DESCRIPTION.get(0), "Loading weights", true);
 
         //load weights on separate task
-        LoadCaffeModelTask loadCaffeModelTask = new LoadCaffeModelTask();
-        loadCaffeModelTask.execute();
+        //LoadCaffeModelTask loadCaffeModelTask = new LoadCaffeModelTask();
+        //loadCaffeModelTask.execute();
 
     }
 
@@ -309,10 +309,18 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         mRgbaModified = inputFrame.rgba();
         mRgbaModified.copyTo(mRgbaTemp);
 
+        boolean portrait = true;
         Mat work = new Mat();
-        Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR );
+        if(mRgbaModified.size().height >  mRgbaModified.size().width) {
+            Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR);
+        }else{
+            portrait = false;
+            Imgproc.resize(inputFrame.gray(), work, new Size((mRgbaModified.size().width * IMAGE_WIDTH) / mRgbaModified.size().height, IMAGE_WIDTH), 0, 0, Imgproc.INTER_LINEAR);
+            Core.transpose(work, work);
+            Core.flip(work, work, 1);
+        }
 
-        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks);
+        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks, portrait);
 
         //auto analyze?
         if (fiducialsAcquired) {

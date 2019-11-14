@@ -23,10 +23,11 @@ public class JavaCamResView extends JavaCameraView {
     public void Setup(){
         StopPreview();
         disconnectCamera();
-        //connectCamera(960, 720);
-        connectCamera(1280, 768);
+        //connectCamera(960, 720); 1920x1080, 3840x2160, 1280x720
+        connectCamera(3840, 2160);
         Camera.Parameters params = this.mCamera.getParameters();
         params.setFlashMode(FLASH_MODE_TORCH);
+        //params.setPreviewSize(3840, 2160);
         this.mCamera.setParameters(params);
         StartPreview();
     }

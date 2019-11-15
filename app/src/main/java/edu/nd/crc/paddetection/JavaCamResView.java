@@ -7,7 +7,9 @@ import org.opencv.android.JavaCameraView;
 import android.content.Context;
 import android.hardware.Camera;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 
 import static android.hardware.Camera.Parameters.FLASH_MODE_TORCH;
 
@@ -23,8 +25,9 @@ public class JavaCamResView extends JavaCameraView {
     public void Setup(){
         StopPreview();
         disconnectCamera();
+
         //connectCamera(960, 720); 1920x1080, 3840x2160, 1280x720
-        connectCamera(3840, 2160);
+        connectCamera(1920, 1080);
         Camera.Parameters params = this.mCamera.getParameters();
         params.setFlashMode(FLASH_MODE_TORCH);
         //params.setPreviewSize(3840, 2160);

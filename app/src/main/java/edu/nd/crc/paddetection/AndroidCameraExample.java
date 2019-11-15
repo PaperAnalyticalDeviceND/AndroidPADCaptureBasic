@@ -21,11 +21,13 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -33,6 +35,7 @@ import android.os.SystemClock;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewDebug;
@@ -386,6 +389,28 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                                                     df.format(today) , "Rectified Image");
                                         } catch(Exception e) {
                                             Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
+                                        }
+
+                                        Log.i("ContoursOut", cFile.getPath());
+
+                                        Intent i = new Intent(Intent.ACTION_SEND);
+                                        i.setType("message/rfc822");
+                                        i.setType("application/image");
+                                        i.putExtra(Intent.EXTRA_EMAIL  , new String[]{"paperanalyticaldevices@gmail.com"});
+                                        i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
+                                        i.putExtra(Intent.EXTRA_TEXT   , "Pad image");
+                                        i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                                        Uri uri = FileProvider.getUriForFile(getApplicationContext(),  getApplicationContext().getPackageName(),new File(cFile.getPath()));
+
+                                        getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                        i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                        i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
+
+                                        try {
+                                            startActivity(Intent.createChooser(i, "Send mail..."));
+                                        } catch (android.content.ActivityNotFoundException ex) {
+                                            Log.i("ContoursOut", "There are no email clients installed.");
                                         }
 
                                         //start preview

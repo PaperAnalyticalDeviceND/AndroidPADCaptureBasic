@@ -15,6 +15,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light">
 
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="edu.nd.crc.paddetection"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
+
         <activity
             android:name="edu.nd.crc.paddetection.AndroidCameraExample"
             android:label="PAD Analyze"

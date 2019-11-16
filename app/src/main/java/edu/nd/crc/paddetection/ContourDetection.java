@@ -544,57 +544,57 @@ public class ContourDetection {
         return T;
     }
 
-    public static void MatchPoints(List<Point3> Markers, List<Point> Source, List<Point> SourceTest, List<Point> Destination, List<Point> DestinationTest){
-        List<Point> QR = new ArrayList<>(), Other = new ArrayList<>();
-        SeperateMarkers(Markers, QR, Other);
-
-        if( QR.size() >= 2 && Other.size() >= 2 ){
-            SortQR(QR, Other);
-
-            int pcount = 0;
-
-            List<Point> transpoints = new ArrayList<>();
-            transpoints.add(new Point(85, 1163));
-            transpoints.add(new Point(686, 1163));
-            transpoints.add(new Point(686, 77));
-
-            for( int i = 0; i < 3; i++ ) {
-                if( Other.get(i).x >= 0 ){
-                    Source.add(Other.get(i));
-                    Destination.add(transpoints.get(i));
-                    pcount += 1;
-                }
-            }
-
-            List<Point> transqrpoints = new ArrayList<>();
-            transqrpoints.add(new Point(82, 64));
-            transqrpoints.add(new Point(82, 226));
-            transqrpoints.add(new Point(244, 64));
-
-            if( QR.size() == 3 ){
-                if( Other.get(0).x >= 0) {
-                    QR.get(1).x = -1;
-                }
-            }
-
-            for( int i = 0; i < 3; i++ ) {
-                if( QR.get(i).x >= 0 ){
-                    if( pcount < 4){
-                        Source.add(QR.get(i));
-                        Destination.add(transqrpoints.get(i));
-                        pcount += 1;
-                    }else{
-                        SourceTest.add(QR.get(i));
-                        DestinationTest.add(transqrpoints.get(i));
-                    }
-                }
-            }
-        }
-
-        if( Source.size() < 4){
-            // ERROR
-        }
-    }
+//    public static void MatchPoints(List<Point3> Markers, List<Point> Source, List<Point> SourceTest, List<Point> Destination, List<Point> DestinationTest){
+//        List<Point> QR = new ArrayList<>(), Other = new ArrayList<>();
+//        SeperateMarkers(Markers, QR, Other);
+//
+//        if( QR.size() >= 2 && Other.size() >= 2 ){
+//            SortQR(QR, Other);
+//
+//            int pcount = 0;
+//
+//            List<Point> transpoints = new ArrayList<>();
+//            transpoints.add(new Point(85, 1163));
+//            transpoints.add(new Point(686, 1163));
+//            transpoints.add(new Point(686, 77));
+//
+//            for( int i = 0; i < 3; i++ ) {
+//                if( Other.get(i).x >= 0 ){
+//                    Source.add(Other.get(i));
+//                    Destination.add(transpoints.get(i));
+//                    pcount += 1;
+//                }
+//            }
+//
+//            List<Point> transqrpoints = new ArrayList<>();
+//            transqrpoints.add(new Point(82, 64));
+//            transqrpoints.add(new Point(82, 226));
+//            transqrpoints.add(new Point(244, 64));
+//
+//            if( QR.size() == 3 ){
+//                if( Other.get(0).x >= 0) {
+//                    QR.get(1).x = -1;
+//                }
+//            }
+//
+//            for( int i = 0; i < 3; i++ ) {
+//                if( QR.get(i).x >= 0 ){
+//                    if( pcount < 4){
+//                        Source.add(QR.get(i));
+//                        Destination.add(transqrpoints.get(i));
+//                        pcount += 1;
+//                    }else{
+//                        SourceTest.add(QR.get(i));
+//                        DestinationTest.add(transqrpoints.get(i));
+//                    }
+//                }
+//            }
+//        }
+//
+//        if( Source.size() < 4){
+//            // ERROR
+//        }
+//    }
 
     public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks){
 
@@ -753,210 +753,210 @@ public class ContourDetection {
         return true;
     }
 
-    public static void SeperateMarkers(List<Point3> Markers, List<Point> QR, List<Point> Other) {
-        int meanSize = 0;
-        for ( Point3 p : Markers ) {
-            meanSize += p.z;
-        }
-        meanSize /= Markers.size();
-
-        List<Double> QRSize = new ArrayList<>();
-        List<Double> OtherSize = new ArrayList<>();
-
-        // separate points and get averages
-        double averageqr = 0;
-        double averageouter = 0;
-        for( Point3 point : Markers) {
-            if( point.z > meanSize ) {
-                QR.add(new Point(point.y, point.x));
-                averageqr += point.z;
-                QRSize.add(point.z);
-            }else {
-                Other.add(new Point(point.y, point.x));
-                averageouter += point.z;
-                OtherSize.add(point.z);
-            }
-        }
-        // weed out additional points
-        if( QR.size() > 3 ){
-            averageqr /= QR.size();
-            double maxdev = 0;
-            int maxindex = -1;
-            for( int i = 0; i < QR.size(); i++ ) {
-                if (Math.abs(QRSize.get(i) - averageqr) > maxdev) {
-                    maxdev = Math.abs(QRSize.get(i) - averageqr);
-                    maxindex = i;
-                }
-            }
-            if (maxindex > -1) {
-                QR.remove(maxindex);
-            }
-        }
-        // make sure no markers in QR if all QR defined
-        if (QR.size() == 3 && QR.size() > 3) {
-            // get average point and maximum x, y for QR markers
-            double avx = 0, avy = 0;
-            double maxx = 0, maxy = 0;
-            for( int i = 0; i < 3; i++ ) {
-                avx += QR.get(i).x;
-                if( QR.get(i).x > maxx ){
-                    maxx = QR.get(i).x;
-                }
-
-                avy += QR.get(i).y;
-                if( QR.get(i).y > maxy ){
-                    maxy = QR.get(i).y;
-                }
-            }
-            avx /= 3;
-            avy /= 3;
-            maxx -= avx;
-            maxy -= avy;
-            
-            // check if any outer points in QR domain
-            for(int i = 0; i < Other.size(); i++ ){
-                if( (Other.get(i).x - avx) < maxx && (Other.get(i).y - avy) < maxy ){
-                    //Other.pop(i);
-                    break;
-                }
-            }
-        }
-
-        // still too many outer points?
-        if( Other.size() > 3 ){
-            averageouter /= Other.size();
-            double maxdev = 0;
-            int maxindex = -1;
-            for(int i = 0; i < Other.size(); i++ ) {
-                if( Math.abs(OtherSize.get(i) - averageouter) > maxdev ) {
-                    maxdev = Math.abs(OtherSize.get(i) - averageouter);
-                    maxindex = i;
-                }
-            }
-            if( maxindex > -1 ){
-                Other.remove(maxindex);
-            }
-        }
-    }
-
-    public static void SortQR(List<Point> QR, List<Point> Other) {
-        if( QR.size() == 3 ) {
-            Point qr_top_left = new Point(9999, 9999);
-            Point qr_top_right = new Point(0, 0);
-            Point qr_bot_left = new Point(0, 0);
-
-            for( Point point : QR ) {
-                if( point.x > qr_top_right.x ){
-                    qr_top_right = point;
-                }
-
-                if( point.y > qr_bot_left.y ){
-                    qr_bot_left = point;
-                }
-            }
-
-            for( Point point : QR ) {
-                if( point != qr_top_right && point != qr_bot_left ) {
-                    qr_top_left = point;
-                }
-            }
-            QR.clear();
-            QR.add(qr_top_left); QR.add(qr_bot_left); QR.add(qr_top_right);
-        } else {
-            double dist = Math.sqrt((QR.get(0).x - QR.get(1).x) * (QR.get(0).x - QR.get(1).x) + (QR.get(0).y - QR.get(1).y) * (QR.get(0).y - QR.get(1).y)) / 3.0;
-            if( Math.abs(QR.get(0).x - QR.get(1).x) < dist ){
-                if( QR.get(0).y < QR.get(1).y ){
-                    List<Point> temp = new ArrayList<>();
-                    temp.add(QR.get(0)); temp.add(QR.get(1)); temp.add(new Point( -1, -1 ));
-                    QR.clear(); QR.addAll(temp);
-                }else{
-                    List<Point> temp = new ArrayList<>();
-                    temp.add(QR.get(1)); temp.add(QR.get(0)); temp.add(new Point( -1, -1 ));
-                    QR.clear(); QR.addAll(temp);
-                }
-            }else{
-                if( Math.abs(QR.get(0).y - QR.get(1).y) < dist ){
-                    if( QR.get(0).x < QR.get(1).x ){
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(QR.get(0)); temp.add(new Point( -1, -1 )); temp.add(QR.get(1));
-                        QR.clear(); QR.addAll(temp);
-                    }else{
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(QR.get(1)); temp.add(new Point( -1, -1 )); temp.add(QR.get(0));
-                        QR.clear(); QR.addAll(temp);
-                    }
-                }else{
-                    if( QR.get(0).x < QR.get(1).x ){
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(new Point( -1, -1 )); temp.add(QR.get(0)); temp.add(QR.get(1));
-                        QR.clear(); QR.addAll(temp);
-                    }else{
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(new Point( -1, -1 )); temp.add(QR.get(1)); temp.add(QR.get(0));
-                        QR.clear(); QR.addAll(temp);
-                    }
-                }
-            }
-        }
-
-        if( Other.size() == 3 ) {
-            Point top_right = new Point(0, 9999);
-            Point bottom_right = new Point(0, 0);
-            Point bottom_left = new Point(9999, 0);
-
-            for( Point point : Other ) {
-                if( point.x > top_right.x && point.y < top_right.y ){
-                    top_right = point;
-                }
-
-                if( point.x < bottom_left.x && point.y > bottom_left.y ){
-                    bottom_left = point;
-                }
-            }
-
-            for( Point point : Other ) {
-                if( point != top_right && point != bottom_left ) {
-                    bottom_right = point;
-                }
-            }
-            Other = new ArrayList<>();
-            Other.add(bottom_left); Other.add(bottom_right); Other.add(top_right);
-        }else{
-            double dist = Math.sqrt((Other.get(0).x - Other.get(1).x) * (Other.get(0).x - Other.get(1).x) + (Other.get(0).y - Other.get(1).y) * (Other.get(0).y - Other.get(1).y)) / 3.0;
-
-            if( Math.abs(Other.get(0).x - Other.get(1).x) < dist ){
-                if( Other.get(0).y < Other.get(1).y ){
-                    List<Point> temp = new ArrayList<>();
-                    temp.add(new Point( -1, -1 )); temp.add(Other.get(1)); temp.add(Other.get(0));
-                    Other.clear(); Other.addAll(temp);
-                }else{
-                    List<Point> temp = new ArrayList<>();
-                    temp.add(new Point( -1, -1 )); temp.add(Other.get(0)); temp.add(Other.get(1));
-                    Other.clear(); Other.addAll(temp);
-                }
-            }else{
-                if( Math.abs(Other.get(0).y - Other.get(1).y) < dist ){
-                    if(Other.get(0).x < Other.get(1).x ){
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(Other.get(0)); temp.add(Other.get(1)); temp.add(new Point( -1, -1 ));
-                        Other.clear(); Other.addAll(temp);
-                    }else{
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(Other.get(1)); temp.add(Other.get(0)); temp.add(new Point( -1, -1 ));
-                        Other.clear(); Other.addAll(temp);
-                    }
-                }else{
-                    if(Other.get(0).x < Other.get(1).x ){
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(Other.get(0)); temp.add(new Point( -1, -1 )); temp.add(Other.get(1));
-                        Other.clear(); Other.addAll(temp);
-                    }else{
-                        List<Point> temp = new ArrayList<>();
-                        temp.add(Other.get(1)); temp.add(new Point( -1, -1 )); temp.add(Other.get(0));
-                        Other.clear(); Other.addAll(temp);
-                    }
-                }
-            }
-        }
-    }
+//    public static void SeperateMarkers(List<Point3> Markers, List<Point> QR, List<Point> Other) {
+//        int meanSize = 0;
+//        for ( Point3 p : Markers ) {
+//            meanSize += p.z;
+//        }
+//        meanSize /= Markers.size();
+//
+//        List<Double> QRSize = new ArrayList<>();
+//        List<Double> OtherSize = new ArrayList<>();
+//
+//        // separate points and get averages
+//        double averageqr = 0;
+//        double averageouter = 0;
+//        for( Point3 point : Markers) {
+//            if( point.z > meanSize ) {
+//                QR.add(new Point(point.y, point.x));
+//                averageqr += point.z;
+//                QRSize.add(point.z);
+//            }else {
+//                Other.add(new Point(point.y, point.x));
+//                averageouter += point.z;
+//                OtherSize.add(point.z);
+//            }
+//        }
+//        // weed out additional points
+//        if( QR.size() > 3 ){
+//            averageqr /= QR.size();
+//            double maxdev = 0;
+//            int maxindex = -1;
+//            for( int i = 0; i < QR.size(); i++ ) {
+//                if (Math.abs(QRSize.get(i) - averageqr) > maxdev) {
+//                    maxdev = Math.abs(QRSize.get(i) - averageqr);
+//                    maxindex = i;
+//                }
+//            }
+//            if (maxindex > -1) {
+//                QR.remove(maxindex);
+//            }
+//        }
+//        // make sure no markers in QR if all QR defined
+//        if (QR.size() == 3 && QR.size() > 3) {
+//            // get average point and maximum x, y for QR markers
+//            double avx = 0, avy = 0;
+//            double maxx = 0, maxy = 0;
+//            for( int i = 0; i < 3; i++ ) {
+//                avx += QR.get(i).x;
+//                if( QR.get(i).x > maxx ){
+//                    maxx = QR.get(i).x;
+//                }
+//
+//                avy += QR.get(i).y;
+//                if( QR.get(i).y > maxy ){
+//                    maxy = QR.get(i).y;
+//                }
+//            }
+//            avx /= 3;
+//            avy /= 3;
+//            maxx -= avx;
+//            maxy -= avy;
+//
+//            // check if any outer points in QR domain
+//            for(int i = 0; i < Other.size(); i++ ){
+//                if( (Other.get(i).x - avx) < maxx && (Other.get(i).y - avy) < maxy ){
+//                    //Other.pop(i);
+//                    break;
+//                }
+//            }
+//        }
+//
+//        // still too many outer points?
+//        if( Other.size() > 3 ){
+//            averageouter /= Other.size();
+//            double maxdev = 0;
+//            int maxindex = -1;
+//            for(int i = 0; i < Other.size(); i++ ) {
+//                if( Math.abs(OtherSize.get(i) - averageouter) > maxdev ) {
+//                    maxdev = Math.abs(OtherSize.get(i) - averageouter);
+//                    maxindex = i;
+//                }
+//            }
+//            if( maxindex > -1 ){
+//                Other.remove(maxindex);
+//            }
+//        }
+//    }
+//
+//    public static void SortQR(List<Point> QR, List<Point> Other) {
+//        if( QR.size() == 3 ) {
+//            Point qr_top_left = new Point(9999, 9999);
+//            Point qr_top_right = new Point(0, 0);
+//            Point qr_bot_left = new Point(0, 0);
+//
+//            for( Point point : QR ) {
+//                if( point.x > qr_top_right.x ){
+//                    qr_top_right = point;
+//                }
+//
+//                if( point.y > qr_bot_left.y ){
+//                    qr_bot_left = point;
+//                }
+//            }
+//
+//            for( Point point : QR ) {
+//                if( point != qr_top_right && point != qr_bot_left ) {
+//                    qr_top_left = point;
+//                }
+//            }
+//            QR.clear();
+//            QR.add(qr_top_left); QR.add(qr_bot_left); QR.add(qr_top_right);
+//        } else {
+//            double dist = Math.sqrt((QR.get(0).x - QR.get(1).x) * (QR.get(0).x - QR.get(1).x) + (QR.get(0).y - QR.get(1).y) * (QR.get(0).y - QR.get(1).y)) / 3.0;
+//            if( Math.abs(QR.get(0).x - QR.get(1).x) < dist ){
+//                if( QR.get(0).y < QR.get(1).y ){
+//                    List<Point> temp = new ArrayList<>();
+//                    temp.add(QR.get(0)); temp.add(QR.get(1)); temp.add(new Point( -1, -1 ));
+//                    QR.clear(); QR.addAll(temp);
+//                }else{
+//                    List<Point> temp = new ArrayList<>();
+//                    temp.add(QR.get(1)); temp.add(QR.get(0)); temp.add(new Point( -1, -1 ));
+//                    QR.clear(); QR.addAll(temp);
+//                }
+//            }else{
+//                if( Math.abs(QR.get(0).y - QR.get(1).y) < dist ){
+//                    if( QR.get(0).x < QR.get(1).x ){
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(QR.get(0)); temp.add(new Point( -1, -1 )); temp.add(QR.get(1));
+//                        QR.clear(); QR.addAll(temp);
+//                    }else{
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(QR.get(1)); temp.add(new Point( -1, -1 )); temp.add(QR.get(0));
+//                        QR.clear(); QR.addAll(temp);
+//                    }
+//                }else{
+//                    if( QR.get(0).x < QR.get(1).x ){
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(new Point( -1, -1 )); temp.add(QR.get(0)); temp.add(QR.get(1));
+//                        QR.clear(); QR.addAll(temp);
+//                    }else{
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(new Point( -1, -1 )); temp.add(QR.get(1)); temp.add(QR.get(0));
+//                        QR.clear(); QR.addAll(temp);
+//                    }
+//                }
+//            }
+//        }
+//
+//        if( Other.size() == 3 ) {
+//            Point top_right = new Point(0, 9999);
+//            Point bottom_right = new Point(0, 0);
+//            Point bottom_left = new Point(9999, 0);
+//
+//            for( Point point : Other ) {
+//                if( point.x > top_right.x && point.y < top_right.y ){
+//                    top_right = point;
+//                }
+//
+//                if( point.x < bottom_left.x && point.y > bottom_left.y ){
+//                    bottom_left = point;
+//                }
+//            }
+//
+//            for( Point point : Other ) {
+//                if( point != top_right && point != bottom_left ) {
+//                    bottom_right = point;
+//                }
+//            }
+//            Other = new ArrayList<>();
+//            Other.add(bottom_left); Other.add(bottom_right); Other.add(top_right);
+//        }else{
+//            double dist = Math.sqrt((Other.get(0).x - Other.get(1).x) * (Other.get(0).x - Other.get(1).x) + (Other.get(0).y - Other.get(1).y) * (Other.get(0).y - Other.get(1).y)) / 3.0;
+//
+//            if( Math.abs(Other.get(0).x - Other.get(1).x) < dist ){
+//                if( Other.get(0).y < Other.get(1).y ){
+//                    List<Point> temp = new ArrayList<>();
+//                    temp.add(new Point( -1, -1 )); temp.add(Other.get(1)); temp.add(Other.get(0));
+//                    Other.clear(); Other.addAll(temp);
+//                }else{
+//                    List<Point> temp = new ArrayList<>();
+//                    temp.add(new Point( -1, -1 )); temp.add(Other.get(0)); temp.add(Other.get(1));
+//                    Other.clear(); Other.addAll(temp);
+//                }
+//            }else{
+//                if( Math.abs(Other.get(0).y - Other.get(1).y) < dist ){
+//                    if(Other.get(0).x < Other.get(1).x ){
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(Other.get(0)); temp.add(Other.get(1)); temp.add(new Point( -1, -1 ));
+//                        Other.clear(); Other.addAll(temp);
+//                    }else{
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(Other.get(1)); temp.add(Other.get(0)); temp.add(new Point( -1, -1 ));
+//                        Other.clear(); Other.addAll(temp);
+//                    }
+//                }else{
+//                    if(Other.get(0).x < Other.get(1).x ){
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(Other.get(0)); temp.add(new Point( -1, -1 )); temp.add(Other.get(1));
+//                        Other.clear(); Other.addAll(temp);
+//                    }else{
+//                        List<Point> temp = new ArrayList<>();
+//                        temp.add(Other.get(1)); temp.add(new Point( -1, -1 )); temp.add(Other.get(0));
+//                        Other.clear(); Other.addAll(temp);
+//                    }
+//                }
+//            }
+//        }
+//    }
 }

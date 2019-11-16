@@ -366,7 +366,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                         Log.d("UI thread", "I am the UI thread");
 
                         AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
-                        alert.setTitle("Fiducials aquired!");
+                        alert.setTitle("Fiducials acquired!");
                         alert.setMessage("Store PAD image?");
                         alert.setPositiveButton("OK",
                                 new DialogInterface.OnClickListener() {
@@ -379,7 +379,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                                         padImageDirectory.mkdirs();
 
                                         //save rectified image
-                                        File cFile = new File(padImageDirectory, "rectified.jpeg");
+                                        File cFile = new File(padImageDirectory, "rectified.png");
                                         Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGBA);
                                         Highgui.imwrite(cFile.getPath(), cropped);
 

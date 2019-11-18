@@ -46,6 +46,12 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.provider.MediaStore;
 
+import com.google.zxing.ChecksumException;
+import com.google.zxing.FormatException;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.RGBLuminanceSource;
+import com.google.zxing.Reader;
+import com.google.zxing.datamatrix.DataMatrixReader;
 import com.sh1r0.caffe_android_lib.CaffeMobile;
 
 import java.io.BufferedReader;
@@ -68,6 +74,20 @@ import java.util.Scanner;
 import java.util.Vector;
 import android.os.Handler;
 import android.os.Looper;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Result;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 public class AndroidCameraExample extends Activity implements CvCameraViewListener2 { //}, CNNListener {
 	private JavaCamResView mOpenCvCameraView;
@@ -337,116 +357,169 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             //Log.i("ContoursOut", String.format("Points (%f, %f, %f).",
               //      checks.get(0,0)[0], checks.get(0,1)[0], checks.get(0,2)[0]));
 
-            //save successful frame
-            mRgbaTemp.copyTo(mRgba);
+            //get pad version
+            int pad_version = 0;
 
-            //flag saved
-            markersDetected = true;
-
-            //enable button once acquired
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    analyzeButton.setEnabled(true);
+            //grab QR code
+            String qr_data = null;
+            try{
+                qr_data = readQRCode(work);
+                if(qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")){
+                    pad_version = 10;
+                }else if(qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")){
+                    pad_version = 20;
                 }
-            });
-
-            // rectify image, include QR/Fiducial points
-            //Note: sending color corrected image to rectifyer
-            //Mat cropped = new Mat();
-            boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, points, cropped, checks);
-
-            //error?
-            if(transformedOk){
-                Log.i("ContoursOut", String.format("Got here 2"));
-
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.d("UI thread", "I am the UI thread");
-
-                        AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
-                        alert.setTitle("Fiducials acquired!");
-                        alert.setMessage("Store PAD image?");
-                        alert.setPositiveButton("OK",
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-                                        Date today = Calendar.getInstance().getTime();
-
-                                        File SDlocation = Environment.getExternalStorageDirectory();
-                                        File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
-                                        padImageDirectory.mkdirs();
-
-                                        //save rectified image
-                                        File cFile = new File(padImageDirectory, "rectified.png");
-                                        Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGBA);
-                                        Highgui.imwrite(cFile.getPath(), cropped);
-
-                                        //gallery?
-                                        try {
-                                            MediaStore.Images.Media.insertImage(getContentResolver(), cFile.getPath(),
-                                                    df.format(today) , "Rectified Image");
-                                        } catch(Exception e) {
-                                            Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
-                                        }
-
-                                        Log.i("ContoursOut", cFile.getPath());
-
-                                        Intent i = new Intent(Intent.ACTION_SEND);
-                                        i.setType("message/rfc822");
-                                        i.setType("application/image");
-                                        i.putExtra(Intent.EXTRA_EMAIL  , new String[]{"paperanalyticaldevices@gmail.com"});
-                                        i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
-                                        i.putExtra(Intent.EXTRA_TEXT   , "Pad image");
-                                        i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                        Uri uri = FileProvider.getUriForFile(getApplicationContext(),  getApplicationContext().getPackageName(),new File(cFile.getPath()));
-
-                                        getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                        i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                        i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
-
-                                        try {
-                                            startActivity(Intent.createChooser(i, "Send mail..."));
-                                        } catch (android.content.ActivityNotFoundException ex) {
-                                            Log.i("ContoursOut", "There are no email clients installed.");
-                                        }
-
-                                        //start preview
-                                        mOpenCvCameraView.StartPreview();
-
-                                        dialog.dismiss();
-                                    }
-                                }
-                        );
-                        alert.setNegativeButton("Cancel",
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        //start preview
-                                        mOpenCvCameraView.StartPreview();
-
-                                        dialog.dismiss();
-                                    }
-                                }
-                        );
-                        alert.show();
-                    }
-                });
-                //new Thread(new Task()).start();
-
-                //stop preview
-                mOpenCvCameraView.StopPreview();
+            } catch(Exception e) {
+                Log.i("ContoursOut", "QR error" + e.toString());
             }
 
-            //mOpenCvCameraView.StopPreview();
+            if(pad_version != 0) {
+                Log.i("ContoursOut", "Version " + Integer.toString(pad_version));
+                //save successful frame
+                mRgbaTemp.copyTo(mRgba);
+
+                //flag saved
+                markersDetected = true;
+
+                //enable button once acquired
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        analyzeButton.setEnabled(true);
+                    }
+                });
+
+                // rectify image, include QR/Fiducial points
+                //Note: sending color corrected image to rectifyer
+                //Mat cropped = new Mat();
+                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, points, cropped, checks, pad_version);
+
+                //error?
+                if (transformedOk) {
+                    Log.i("ContoursOut", String.format("Got here 2"));
+
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.d("UI thread", "I am the UI thread");
+
+                            AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
+                            alert.setTitle("Fiducials acquired!");
+                            alert.setMessage("Store PAD image?");
+                            alert.setPositiveButton("OK",
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                                            Date today = Calendar.getInstance().getTime();
+
+                                            File SDlocation = Environment.getExternalStorageDirectory();
+                                            File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
+                                            padImageDirectory.mkdirs();
+
+                                            //save rectified image
+                                            File cFile = new File(padImageDirectory, "rectified.png");
+                                            Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGBA);
+                                            Highgui.imwrite(cFile.getPath(), cropped);
+
+                                            //gallery?
+                                            try {
+                                                MediaStore.Images.Media.insertImage(getContentResolver(), cFile.getPath(),
+                                                        df.format(today), "Rectified Image");
+                                            } catch (Exception e) {
+                                                Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
+                                            }
+
+                                            Log.i("ContoursOut", cFile.getPath());
+
+                                            Intent i = new Intent(Intent.ACTION_SEND);
+                                            i.setType("message/rfc822");
+                                            i.setType("application/image");
+                                            i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
+                                            i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
+                                            i.putExtra(Intent.EXTRA_TEXT, "Pad image");
+                                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                                            Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
+
+                                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                            i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
+
+                                            try {
+                                                startActivity(Intent.createChooser(i, "Send mail..."));
+                                            } catch (android.content.ActivityNotFoundException ex) {
+                                                Log.i("ContoursOut", "There are no email clients installed.");
+                                            }
+
+                                            //start preview
+                                            mOpenCvCameraView.StartPreview();
+
+                                            dialog.dismiss();
+                                        }
+                                    }
+                            );
+                            alert.setNegativeButton("Cancel",
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            //start preview
+                                            mOpenCvCameraView.StartPreview();
+
+                                            dialog.dismiss();
+                                        }
+                                    }
+                            );
+                            alert.show();
+                        }
+                    });
+                    //new Thread(new Task()).start();
+
+                    //stop preview
+                    mOpenCvCameraView.StopPreview();
+                }
+
+                //mOpenCvCameraView.StopPreview();
+            }
 
         }
 
         return mRgbaModified;
 	}
 
-    public class PredictionGuess implements Comparable<PredictionGuess> {
+/**
+ *
+  */
+public static String readQRCode(Mat mTwod){
+    Bitmap bMap = Bitmap.createBitmap(mTwod.width(), mTwod.height(), Bitmap.Config.ARGB_8888);
+    Utils.matToBitmap(mTwod, bMap);
+    int[] intArray = new int[bMap.getWidth()*bMap.getHeight()];
+    //copy pixel data from the Bitmap into the 'intArray' array
+    bMap.getPixels(intArray, 0, bMap.getWidth(), 0, 0, bMap.getWidth(), bMap.getHeight());
+
+    LuminanceSource source = new RGBLuminanceSource(bMap.getWidth(), bMap.getHeight(),intArray);
+
+    BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+    Reader reader = new MultiFormatReader();//DataMatrixReader();
+    //....doing the actually reading
+    Result result = null;
+    try {
+        result = reader.decode(bitmap);
+    } catch (NotFoundException e) {
+        Log.i("ContoursOut", "QR error" + e.toString());
+        e.printStackTrace();
+    } catch (ChecksumException e) {
+        Log.i("ContoursOut", "QR error" + e.toString());
+        e.printStackTrace();
+    } catch (FormatException e) {
+        Log.i("ContoursOut", "QR error" + e.toString());
+        e.printStackTrace();
+    }
+    Log.i("ContoursOut", String.format("QR: %s", result.getText()));
+
+    //return
+    return result.getText();
+}
+
+public class PredictionGuess implements Comparable<PredictionGuess> {
         public int Index;
         public float Confidence;
         public int NetIndex;

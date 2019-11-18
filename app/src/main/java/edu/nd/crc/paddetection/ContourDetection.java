@@ -596,7 +596,7 @@ public class ContourDetection {
 //        }
 //    }
 
-    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks){
+    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks, int pad_version){
 
         //set artwork points
         Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);

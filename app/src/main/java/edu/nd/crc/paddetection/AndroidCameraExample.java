@@ -37,6 +37,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.util.Log;
+import android.util.TimingLogger;
 import android.view.View;
 import android.view.ViewDebug;
 import android.view.WindowManager;
@@ -82,12 +83,12 @@ import com.google.zxing.MultiFormatReader;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.NotFoundException;
 import com.google.zxing.Result;
-import com.google.zxing.WriterException;
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
+//import com.google.zxing.WriterException;
+//import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+//import com.google.zxing.client.j2se.MatrixToImageWriter;
+//import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+//import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 public class AndroidCameraExample extends Activity implements CvCameraViewListener2 { //}, CNNListener {
 	private JavaCamResView mOpenCvCameraView;
@@ -347,6 +348,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Core.flip(work, work, 1);
         }
 
+        //TimingLogger timings = new TimingLogger(CHRIS, "methodA");
         boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks, portrait);
 
         //auto analyze?
@@ -366,7 +368,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 qr_data = readQRCode(work);
                 if(qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")){
                     pad_version = 10;
-                }else if(qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")){
+                }else if(qr_data.substring(0, 21).equals("padproject.nd.edu/?t=")){
                     pad_version = 20;
                 }
             } catch(Exception e) {

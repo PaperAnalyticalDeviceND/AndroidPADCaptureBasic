@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.Display;
 
 import static android.hardware.Camera.Parameters.FLASH_MODE_TORCH;
+import static android.hardware.Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO;
 
 public class JavaCamResView extends JavaCameraView {
     private boolean mPreviewShowing;
@@ -30,6 +31,7 @@ public class JavaCamResView extends JavaCameraView {
         connectCamera(1920, 1080);
         Camera.Parameters params = this.mCamera.getParameters();
         params.setFlashMode(FLASH_MODE_TORCH);
+        params.setFocusMode(FOCUS_MODE_CONTINUOUS_VIDEO);
         //params.setPreviewSize(3840, 2160);
         this.mCamera.setParameters(params);
         StartPreview();

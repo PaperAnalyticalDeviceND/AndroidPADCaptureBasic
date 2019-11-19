@@ -36,12 +36,15 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.util.TimingLogger;
 import android.view.View;
 import android.view.ViewDebug;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -126,7 +129,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private FloatingActionButton analyzeButton;
 
     public void doAnalysis(View view) {
-        // Kabloey
+        /*// Kabloey
         if (markersDetected) {
             dialog = ProgressDialog.show(AndroidCameraExample.this, "Predicting...", "Cropping Image", true);
 
@@ -148,15 +151,19 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             });
 
 
-        }else{
-            AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
-            alert.setTitle("Fiducials not aquired!");
-            alert.setMessage("Please align fiducials with screen markers.\nCircles will turn green when aligned.");
-            alert.setPositiveButton("OK",null);
-            alert.show();
+        }else{*/
+        final AlertDialog d = new AlertDialog.Builder(this)
+                .setPositiveButton(android.R.string.ok, null)
+                .setTitle("Paper Analytical Device (PAD) project\nat the University of Notre Dame.")
+                .setMessage(Html.fromHtml("The PAD projects brings crowdsourcing to the testing of theraputic drugs.<br><a href=\"http://padproject.nd.edu\">http://padproject.nd.edu</a>"))
+                .create();
+        d.show();
+        
+        // Make the textview clickable. Must be called after show()
+        ((TextView)d.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
             //Context context = getApplicationContext();
             //Toast.makeText(context, "Fiducials not aquired!\nPlease align fiducials with screen markers.\nCircles will turn green when aligned.", Toast.LENGTH_LONG).show();
-        }
+        //}
     }
 
     @Override

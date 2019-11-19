@@ -455,7 +455,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                                             i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
 
                                             try {
-                                                startActivity(Intent.createChooser(i, "Send mail..."));
+                                                //startActivity(Intent.createChooser(i, "Send mail..."));
+                                                startActivity(i);
                                             } catch (android.content.ActivityNotFoundException ex) {
                                                 Log.i("ContoursOut", "There are no email clients installed.");
                                             }

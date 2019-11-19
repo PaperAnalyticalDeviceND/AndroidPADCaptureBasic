@@ -22,11 +22,14 @@ import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Vector;
+
+import static com.google.common.primitives.Doubles.min;
 
 /**
  * Created by Omegaice on 6/16/16.
@@ -62,6 +65,27 @@ public class ContourDetection {
             ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
         }else{
             ratio = (float)mRgbaModified.size().height / (float)IMAGE_WIDTH;
+        }
+
+        //draw target fiducials
+        //[85, 1163], [686, 1163], [686, 77], [82, 64], [82, 226], [244, 64]
+        //portrait    comDisplay = new Point(mc.x * ratio, mc.y * ratio);
+        //landscape comDisplay = new Point((mc.y) * ratio, (720-mc.x) * ratio);
+        //center = 360
+        double horiz_line = 730 / 2;
+        double scale_ratio = min(work.size().height / 1220, 1.0) * .9;
+        List<Integer> f_locs = Arrays.asList(85, 1163, 686, 1163, 686, 77, 82, 64, 82, 226, 244, 64);
+        Scalar wt_color = new Scalar(255, 255, 255, 10);
+        for(int i=0; i<6; i++) {
+            int x = (int)((f_locs.get(i*2) - horiz_line) * scale_ratio + horiz_line);
+            int y = (int)(f_locs.get(i*2+1) * scale_ratio);
+
+            Point pnt1 = new Point((y - 15) * ratio, (720 - x - 15) * ratio);
+            Point pnt2 = new Point((y + 15) * ratio, (720 - x + 15) * ratio);
+            Point pnt3 = new Point((y - 7) * ratio, (720 - x - 7) * ratio);
+            Point pnt4 = new Point((y + 7) * ratio, (720 - x + 7) * ratio);
+            Core.rectangle(mRgbaModified, pnt1, pnt2, wt_color, 2, 8, 0);
+            Core.rectangle(mRgbaModified, pnt3, pnt4, wt_color, 2, 8, 0);
         }
 
         //ratio = (float)1.5;

@@ -158,7 +158,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 .setMessage(Html.fromHtml("The PAD projects brings crowdsourcing to the testing of theraputic drugs.<br><a href=\"http://padproject.nd.edu\">http://padproject.nd.edu</a>"))
                 .create();
         d.show();
-        
+
         // Make the textview clickable. Must be called after show()
         ((TextView)d.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
             //Context context = getApplicationContext();

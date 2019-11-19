@@ -74,12 +74,17 @@ public class ContourDetection {
         //center = 360
         double horiz_line = 730 / 2;
         double scale_ratio = min(work.size().height / 1220, 1.0) * .95;
-        double offset = work.size().height *.025; //1/2 of the 5% from 0.95
+        if(scale_ratio > .85){
+            scale_ratio = 0.85;
+        }
+        double scale_offset = ((work.size().height - (1163 * scale_ratio)) / 2) - (64 * scale_ratio);
+        //Log.i("ContoursOut", String.format("Offs %f", scale_offset));
+
         List<Integer> f_locs = Arrays.asList(85, 1163, 686, 1163, 686, 77, 82, 64, 82, 226, 244, 64);
         Scalar wt_color = new Scalar(255, 255, 255, 10);
         for(int i=0; i<6; i++) {
             int x = (int)((f_locs.get(i*2) - horiz_line) * scale_ratio + horiz_line - 10); //based on 730 width artwork
-            int y = (int)(f_locs.get(i*2+1) * scale_ratio + offset);
+            int y = (int)(f_locs.get(i*2+1) * scale_ratio + scale_offset);
 
             Point pnt1 = new Point((y - 15) * ratio, (720 - x - 15) * ratio);
             Point pnt2 = new Point((y + 15) * ratio, (720 - x + 15) * ratio);

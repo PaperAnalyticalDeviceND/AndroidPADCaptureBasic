@@ -58,7 +58,7 @@ public class ContourDetection {
     };
 
     //get fudicial points, mark onto current image (mRgbaModified)
-    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks, boolean portrait, Mat destinationpoints, double checksdata[]){
+    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, List<Point> src_points, boolean portrait){
 
         //get analasis/real ratio
         float ratio;
@@ -218,227 +218,11 @@ public class ContourDetection {
 
             //test if we have data
             if(outer.size() + qr.size() >= 5){
-                List<Point> src_points = order_points(outer, qr, ratio);
+                //List<Point>
+                order_points(src_points, outer, qr, ratio);
 
-                //create points
-                float data[] = new float[8];
-                float data2[] = new float[8];
-                float locations[] = {85, 1163, 686, 1163, 686, 77, 244, 64, 82, 64, 82, 226};
-                int j = 0;
-
-                for(int i=0; i<4; i++){
-                    if(j == 4) j++; //miss first fiducial
-                    while(src_points.get(j).x < 0){
-                        j++;
-                    }
-                    double datinx = src_points.get(j).x;
-                    double datiny = src_points.get(j).y;
-                    if(datinx > 0 && datiny > 0){
-                        data[2*i] = (float)datinx;
-                        data[2*i+1] = (float)datiny;
-                        data2[2*i] = locations[j*2];
-                        data2[2*i+1] = locations[j*2+1];
-                        j++;
-                    }
-                }
-
-                //[85, 1163], [686, 1163], [686, 77], [82, 64], [82, 226], [244, 64]
-                //float data2[] = {85, 1163, 686, 1163, 686, 77, 82, 64};//, 244, 64}; //{82, 64, 85, 1163, 686, 1163, 686, 77};
-                destinationpoints.put(0, 0, data2);
-
-                /*float data[] = {(float)src_points.get(0).x, (float)src_points.get(0).y,
-                        (float)src_points.get(1).x, (float)src_points.get(1).y,
-                        (float)src_points.get(2).x, (float)src_points.get(2).y,
-                        (float)src_points.get(3).x, (float)src_points.get(3).y};//,
-                        //(float)src_points.get(5).x, (float)src_points.get(5).y};//,*/
-                //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
-                points.put(0, 0, data);
-
-                //get check point, chose tp LHS QR if 3 QR, else one of QR
-                double checkdata[] = new double[3];
-
-                int check_idx = 4;
-
-                //check point 4 exists
-                if(src_points.get(check_idx).x < 0){
-                    check_idx++;
-                }
-                //put in array
-                checkdata[0] = src_points.get(check_idx).x;
-                checkdata[1] = src_points.get(check_idx).y;
-                checkdata[2] = 1.0;//,
-
-                //set taerget point
-                checksdata[0] = locations[check_idx * 2];
-                checksdata[1] = locations[check_idx * 2 + 1];
-                //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y, 1.0f};
-
-                checks.put(0, 0, checkdata);
-
-                Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
-                        src_points.get(0).x, src_points.get(0).y, src_points.get(1).x, src_points.get(1).y, src_points.get(2).x,
-                        src_points.get(2).y, src_points.get(3).x, src_points.get(3).y, src_points.get(4).x, src_points.get(4).y,
-                        src_points.get(5).x, src_points.get(5).y));
-
-                //flag acquired
                 return true;
-
             }
-
-            /*for( int i=0; i < order.size(); i++){
-                if(order.get(i).valid){
-                    for( int j=i+1; j < order.size(); j++){
-                        if(order.get(j).valid){
-                            double ix = order.get(i).Center.x;
-                            double iy = order.get(i).Center.y;
-                            double jx = order.get(j).Center.x;
-                            double jy = order.get(j).Center.y;
-
-                            if(Math.abs(ix - jx) < 5 && Math.abs(iy - jy) < 5){
-                                if(order.get(i).Diameter < order.get(j).Diameter){
-                                    order.get(i).valid = false;
-                                    break;
-                                }else{
-                                    order.get(j).valid = false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }*/
-
-            /*Collections.sort(order);
-
-            //get center of mass
-            Point com = new Point(0.0, 0.0);
-            float pcountf = 0.0f;
-
-            for( int i=0; i<order.size(); i++){
-                if(order.get(i).valid){
-                    com.x += order.get(i).Center.x;
-                    com.y += order.get(i).Center.y;
-                    pcountf += 1.0;
-                }
-            }
-
-            com.x /= pcountf;
-            com.y /= pcountf;
-
-            //scale back to image size
-            Point comDisplay = new Point(com.x * ratio, com.y * ratio);
-            Point c_o_m = new Point(517, 400); //with offsets, subtract y from width of 768, was 429 for 768
-
-            double distance = Math.sqrt((com.x * ratio - 517) * (com.x * ratio - 517) + (com.y * ratio - 429) * (com.y * ratio - 429));
-
-            //reasonable COM?
-            Scalar markerColor;
-            Boolean markersOK;
-
-            List<Point> QR = new Vector<>();
-            List<Point> Fiducial = new Vector<>();
-
-            if(distance < 50 && pcountf > 5) {
-                //if(com.x < 280 && com.x > 200 && com.y < 200 && com.y > 120 && pcountf > 5) {
-                markerColor = new Scalar(0, 255, 0);
-                markersOK = true;
-                //QR = new Vector<>();
-                //Fiducial = new Vector<>();
-            }else{
-                markerColor = new Scalar(255, 0, 0);
-                markersOK = false;
-
-                //draw COM circles if not used
-                Core.circle(mRgbaModified, comDisplay, 10, new Scalar(0, 255, 255), 2, 8, 0);
-                Core.circle(mRgbaModified, c_o_m, 12, new Scalar(255, 0, 0), 2, 8, 0);
-            }*/
-
-            /*//count points
-            int pcount = 0;
-
-            //loop
-            for (int j = 0; j < order.size(); j++) {
-                if (order.get(j).valid) {
-                    float dia;
-                    String targetType;
-                    Point mcd = order.get(j).Center;
-
-                    //if top LHS then QR code marker
-                    if (mcd.y > (com.y - 30) && mcd.x < com.x) {
-                        dia = 30;
-                        targetType = "QR";
-                        if(markersOK){
-                            QR.add(new Point(720 - (mcd.y * ratio), mcd.x * ratio));
-                        }
-                    } else {
-                        dia = 15;
-                        targetType = "Fiducial";
-                        if(markersOK){
-                            Fiducial.add(new Point(720 - (mcd.y * ratio), mcd.x * ratio));
-                        }
-                    }
-
-                    if (markersOK) Log.i("Contours", String.format("Tyep: %s, Point %d: %d, %d, %f, %f, %f, %f", targetType, j, (int) (mcd.x * ratio + 0.5),
-                            (int) (mcd.y * ratio + 0.5), diameter.get(j), com.x * ratio, com.y * ratio, distance));
-
-                    //scale back to image size
-                    mcd.x *= ratio;
-                    mcd.y *= ratio;
-                    Core.circle(mRgbaModified, mcd, (int) dia, markerColor, 2, 8, 0);
-
-                    if (pcount++ >= 5) break;
-                }
-            }
-
-            //auto analyze?
-            if( markersOK && QR.size() == 3 && Fiducial.size() == 3) {
-                //sort points
-                int qrxhigh = -1, qryhigh = -1, qr1 = -1, fudxlow = -1, fudylow = -1, fud4 = -1;
-                double qrxmax = 0, qrymax = 0, fudxmin = 720, fudymin = 1280;
-                for(int i=0; i<3; i++){
-                    if(QR.get(i).x > qrxmax){
-                        qrxhigh = i;
-                        qrxmax = QR.get(i).x;
-                    }
-                    if(QR.get(i).y > qrymax){
-                        qryhigh = i;
-                        qrymax = QR.get(i).y;
-                    }
-                    if(Fiducial.get(i).x < fudxmin){
-                        fudxlow = i;
-                        fudxmin = Fiducial.get(i).x;
-                    }
-                    if(Fiducial.get(i).y < fudymin){
-                        fudylow = i;
-                        fudymin = Fiducial.get(i).y;
-                    }
-                }
-                for(int i=0; i<3; i++){
-                    if(i != qrxhigh && i != qryhigh) qr1 = i;
-                    if(i != fudxlow && i != fudylow) fud4 = i;
-                }
-
-                //create points
-                float data[] = {(float)QR.get(qr1).x, (float)QR.get(qr1).y,
-                        //(float)QR.get(qryhigh).x, (float)QR.get(qryhigh).y,
-                        (float)Fiducial.get(fudxlow).x, (float)Fiducial.get(fudxlow).y,
-                        (float)Fiducial.get(fud4).x, (float)Fiducial.get(fud4).y,
-                        (float)Fiducial.get(fudylow).x, (float)Fiducial.get(fudylow).y};//,
-                //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
-                points.put(0, 0, data);
-
-                double checkdata[] = {QR.get(qryhigh).x, QR.get(qryhigh).y, 1.0};//,
-                        //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y, 1.0f};
-
-                checks.put(0, 0, checkdata);
-
-                //flag acquired
-                return true;
-                //Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
-                //      points.get(0).x, points.get(0).y, points.get(1).x, points.get(1).y, points.get(2).x,
-                //    points.get(2).y, points.get(3).x, points.get(3).y, points.get(4).x, points.get(4).y,
-                //  points.get(5).x, points.get(5).y));
-                //flag saved
-            }*/
 
         }
 
@@ -447,9 +231,8 @@ public class ContourDetection {
     }
 
     //order outer and qr points
-    private static List<Point> order_points(List<Point> outer, List<Point> qr, float ratio) {
+    private static boolean order_points(List<Point> src_points, List<Point> outer, List<Point> qr, float ratio) {
         //return data
-        List<Point> src_points = new Vector<>();
         Log.i("ContoursOut", String.format("order points " + outer.size()));
         //sort outer~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         if(outer.size() == 3) { //all points
@@ -618,8 +401,8 @@ public class ContourDetection {
             }
         }
 
-        //return points
-        return src_points;
+        //return OK
+        return true;
     }
 
     public static Mat TransformPoints(List<Point> Source, List<Point> Destination) {
@@ -697,70 +480,65 @@ public class ContourDetection {
         return T;
     }
 
-//    public static void MatchPoints(List<Point3> Markers, List<Point> Source, List<Point> SourceTest, List<Point> Destination, List<Point> DestinationTest){
-//        List<Point> QR = new ArrayList<>(), Other = new ArrayList<>();
-//        SeperateMarkers(Markers, QR, Other);
-//
-//        if( QR.size() >= 2 && Other.size() >= 2 ){
-//            SortQR(QR, Other);
-//
-//            int pcount = 0;
-//
-//            List<Point> transpoints = new ArrayList<>();
-//            transpoints.add(new Point(85, 1163));
-//            transpoints.add(new Point(686, 1163));
-//            transpoints.add(new Point(686, 77));
-//
-//            for( int i = 0; i < 3; i++ ) {
-//                if( Other.get(i).x >= 0 ){
-//                    Source.add(Other.get(i));
-//                    Destination.add(transpoints.get(i));
-//                    pcount += 1;
-//                }
-//            }
-//
-//            List<Point> transqrpoints = new ArrayList<>();
-//            transqrpoints.add(new Point(82, 64));
-//            transqrpoints.add(new Point(82, 226));
-//            transqrpoints.add(new Point(244, 64));
-//
-//            if( QR.size() == 3 ){
-//                if( Other.get(0).x >= 0) {
-//                    QR.get(1).x = -1;
-//                }
-//            }
-//
-//            for( int i = 0; i < 3; i++ ) {
-//                if( QR.get(i).x >= 0 ){
-//                    if( pcount < 4){
-//                        Source.add(QR.get(i));
-//                        Destination.add(transqrpoints.get(i));
-//                        pcount += 1;
-//                    }else{
-//                        SourceTest.add(QR.get(i));
-//                        DestinationTest.add(transqrpoints.get(i));
-//                    }
-//                }
-//            }
-//        }
-//
-//        if( Source.size() < 4){
-//            // ERROR
-//        }
-//    }
+    public static boolean RectifyImage(Mat input, Mat Template, Mat fringe_warped, int pad_version, List<Point> src_points){
 
-    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks, int pad_version, Mat destinationpoints, double checksdata[]){
+        Log.i("ContoursOut", String.format("Pre get persp"));
+
+        //create points
+        float data[] = new float[8];
+        float data2[] = new float[8];
+        float locations[] = {85, 1163, 686, 1163, 686, 77, 244, 64, 82, 64, 82, 226};
+        int j = 0;
+
+        for(int i=0; i<4; i++){
+            if(j == 4) j++; //miss first fiducial
+            while(src_points.get(j).x < 0){
+                j++;
+            }
+            double datinx = src_points.get(j).x;
+            double datiny = src_points.get(j).y;
+            if(datinx > 0 && datiny > 0){
+                data[2*i] = (float)datinx;
+                data[2*i+1] = (float)datiny;
+                data2[2*i] = locations[j*2];
+                data2[2*i+1] = locations[j*2+1];
+                j++;
+            }
+        }
 
         //set artwork points
-        //Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
+        Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
+        destinationpoints.put(0, 0, data2);
 
-        //[85, 1163], [686, 1163], [686, 77], [82, 64], [82, 226], [244, 64]
-        //float data[] = {85, 1163, 686, 1163, 686, 77, 82, 64};//, 244, 64}; //{82, 64, 85, 1163, 686, 1163, 686, 77};
-        //destinationpoints.put(0, 0, data);
+        Mat points = new Mat(4, 2,CvType.CV_32F);
+        points.put(0, 0, data);
 
-        //and for checks
-        //double checksdata[] = {82, 64};//226};//, 244, 64};
-        Log.i("ContoursOut", String.format("Pre get persp"));
+        //get check point, chose tp LHS QR if 3 QR, else one of QR
+        double checkdata[] = new double[3];
+        double checksdata[] = new double[2];
+
+        int check_idx = 4;
+
+        //check point 4 exists
+        if(src_points.get(check_idx).x < 0){
+            check_idx++;
+        }
+        //put in array
+        checkdata[0] = src_points.get(check_idx).x;
+        checkdata[1] = src_points.get(check_idx).y;
+        checkdata[2] = 1.0;//,
+
+        //set taerget point
+        checksdata[0] = locations[check_idx * 2];
+        checksdata[1] = locations[check_idx * 2 + 1];
+
+        Mat checks = new Mat(3, 1,CvType.CV_64F);
+        checks.put(0, 0, checkdata);
+
+        Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
+                src_points.get(0).x, src_points.get(0).y, src_points.get(1).x, src_points.get(1).y, src_points.get(2).x,
+                src_points.get(2).y, src_points.get(3).x, src_points.get(3).y, src_points.get(4).x, src_points.get(4).y,
+                src_points.get(5).x, src_points.get(5).y));
 
         //get transformation
         Mat TI = Imgproc.getPerspectiveTransform(points, destinationpoints);//TransformPoints(points, destinationpoints);
@@ -906,210 +684,4 @@ public class ContourDetection {
         return true;
     }
 
-//    public static void SeperateMarkers(List<Point3> Markers, List<Point> QR, List<Point> Other) {
-//        int meanSize = 0;
-//        for ( Point3 p : Markers ) {
-//            meanSize += p.z;
-//        }
-//        meanSize /= Markers.size();
-//
-//        List<Double> QRSize = new ArrayList<>();
-//        List<Double> OtherSize = new ArrayList<>();
-//
-//        // separate points and get averages
-//        double averageqr = 0;
-//        double averageouter = 0;
-//        for( Point3 point : Markers) {
-//            if( point.z > meanSize ) {
-//                QR.add(new Point(point.y, point.x));
-//                averageqr += point.z;
-//                QRSize.add(point.z);
-//            }else {
-//                Other.add(new Point(point.y, point.x));
-//                averageouter += point.z;
-//                OtherSize.add(point.z);
-//            }
-//        }
-//        // weed out additional points
-//        if( QR.size() > 3 ){
-//            averageqr /= QR.size();
-//            double maxdev = 0;
-//            int maxindex = -1;
-//            for( int i = 0; i < QR.size(); i++ ) {
-//                if (Math.abs(QRSize.get(i) - averageqr) > maxdev) {
-//                    maxdev = Math.abs(QRSize.get(i) - averageqr);
-//                    maxindex = i;
-//                }
-//            }
-//            if (maxindex > -1) {
-//                QR.remove(maxindex);
-//            }
-//        }
-//        // make sure no markers in QR if all QR defined
-//        if (QR.size() == 3 && QR.size() > 3) {
-//            // get average point and maximum x, y for QR markers
-//            double avx = 0, avy = 0;
-//            double maxx = 0, maxy = 0;
-//            for( int i = 0; i < 3; i++ ) {
-//                avx += QR.get(i).x;
-//                if( QR.get(i).x > maxx ){
-//                    maxx = QR.get(i).x;
-//                }
-//
-//                avy += QR.get(i).y;
-//                if( QR.get(i).y > maxy ){
-//                    maxy = QR.get(i).y;
-//                }
-//            }
-//            avx /= 3;
-//            avy /= 3;
-//            maxx -= avx;
-//            maxy -= avy;
-//
-//            // check if any outer points in QR domain
-//            for(int i = 0; i < Other.size(); i++ ){
-//                if( (Other.get(i).x - avx) < maxx && (Other.get(i).y - avy) < maxy ){
-//                    //Other.pop(i);
-//                    break;
-//                }
-//            }
-//        }
-//
-//        // still too many outer points?
-//        if( Other.size() > 3 ){
-//            averageouter /= Other.size();
-//            double maxdev = 0;
-//            int maxindex = -1;
-//            for(int i = 0; i < Other.size(); i++ ) {
-//                if( Math.abs(OtherSize.get(i) - averageouter) > maxdev ) {
-//                    maxdev = Math.abs(OtherSize.get(i) - averageouter);
-//                    maxindex = i;
-//                }
-//            }
-//            if( maxindex > -1 ){
-//                Other.remove(maxindex);
-//            }
-//        }
-//    }
-//
-//    public static void SortQR(List<Point> QR, List<Point> Other) {
-//        if( QR.size() == 3 ) {
-//            Point qr_top_left = new Point(9999, 9999);
-//            Point qr_top_right = new Point(0, 0);
-//            Point qr_bot_left = new Point(0, 0);
-//
-//            for( Point point : QR ) {
-//                if( point.x > qr_top_right.x ){
-//                    qr_top_right = point;
-//                }
-//
-//                if( point.y > qr_bot_left.y ){
-//                    qr_bot_left = point;
-//                }
-//            }
-//
-//            for( Point point : QR ) {
-//                if( point != qr_top_right && point != qr_bot_left ) {
-//                    qr_top_left = point;
-//                }
-//            }
-//            QR.clear();
-//            QR.add(qr_top_left); QR.add(qr_bot_left); QR.add(qr_top_right);
-//        } else {
-//            double dist = Math.sqrt((QR.get(0).x - QR.get(1).x) * (QR.get(0).x - QR.get(1).x) + (QR.get(0).y - QR.get(1).y) * (QR.get(0).y - QR.get(1).y)) / 3.0;
-//            if( Math.abs(QR.get(0).x - QR.get(1).x) < dist ){
-//                if( QR.get(0).y < QR.get(1).y ){
-//                    List<Point> temp = new ArrayList<>();
-//                    temp.add(QR.get(0)); temp.add(QR.get(1)); temp.add(new Point( -1, -1 ));
-//                    QR.clear(); QR.addAll(temp);
-//                }else{
-//                    List<Point> temp = new ArrayList<>();
-//                    temp.add(QR.get(1)); temp.add(QR.get(0)); temp.add(new Point( -1, -1 ));
-//                    QR.clear(); QR.addAll(temp);
-//                }
-//            }else{
-//                if( Math.abs(QR.get(0).y - QR.get(1).y) < dist ){
-//                    if( QR.get(0).x < QR.get(1).x ){
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(QR.get(0)); temp.add(new Point( -1, -1 )); temp.add(QR.get(1));
-//                        QR.clear(); QR.addAll(temp);
-//                    }else{
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(QR.get(1)); temp.add(new Point( -1, -1 )); temp.add(QR.get(0));
-//                        QR.clear(); QR.addAll(temp);
-//                    }
-//                }else{
-//                    if( QR.get(0).x < QR.get(1).x ){
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(new Point( -1, -1 )); temp.add(QR.get(0)); temp.add(QR.get(1));
-//                        QR.clear(); QR.addAll(temp);
-//                    }else{
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(new Point( -1, -1 )); temp.add(QR.get(1)); temp.add(QR.get(0));
-//                        QR.clear(); QR.addAll(temp);
-//                    }
-//                }
-//            }
-//        }
-//
-//        if( Other.size() == 3 ) {
-//            Point top_right = new Point(0, 9999);
-//            Point bottom_right = new Point(0, 0);
-//            Point bottom_left = new Point(9999, 0);
-//
-//            for( Point point : Other ) {
-//                if( point.x > top_right.x && point.y < top_right.y ){
-//                    top_right = point;
-//                }
-//
-//                if( point.x < bottom_left.x && point.y > bottom_left.y ){
-//                    bottom_left = point;
-//                }
-//            }
-//
-//            for( Point point : Other ) {
-//                if( point != top_right && point != bottom_left ) {
-//                    bottom_right = point;
-//                }
-//            }
-//            Other = new ArrayList<>();
-//            Other.add(bottom_left); Other.add(bottom_right); Other.add(top_right);
-//        }else{
-//            double dist = Math.sqrt((Other.get(0).x - Other.get(1).x) * (Other.get(0).x - Other.get(1).x) + (Other.get(0).y - Other.get(1).y) * (Other.get(0).y - Other.get(1).y)) / 3.0;
-//
-//            if( Math.abs(Other.get(0).x - Other.get(1).x) < dist ){
-//                if( Other.get(0).y < Other.get(1).y ){
-//                    List<Point> temp = new ArrayList<>();
-//                    temp.add(new Point( -1, -1 )); temp.add(Other.get(1)); temp.add(Other.get(0));
-//                    Other.clear(); Other.addAll(temp);
-//                }else{
-//                    List<Point> temp = new ArrayList<>();
-//                    temp.add(new Point( -1, -1 )); temp.add(Other.get(0)); temp.add(Other.get(1));
-//                    Other.clear(); Other.addAll(temp);
-//                }
-//            }else{
-//                if( Math.abs(Other.get(0).y - Other.get(1).y) < dist ){
-//                    if(Other.get(0).x < Other.get(1).x ){
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(Other.get(0)); temp.add(Other.get(1)); temp.add(new Point( -1, -1 ));
-//                        Other.clear(); Other.addAll(temp);
-//                    }else{
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(Other.get(1)); temp.add(Other.get(0)); temp.add(new Point( -1, -1 ));
-//                        Other.clear(); Other.addAll(temp);
-//                    }
-//                }else{
-//                    if(Other.get(0).x < Other.get(1).x ){
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(Other.get(0)); temp.add(new Point( -1, -1 )); temp.add(Other.get(1));
-//                        Other.clear(); Other.addAll(temp);
-//                    }else{
-//                        List<Point> temp = new ArrayList<>();
-//                        temp.add(Other.get(1)); temp.add(new Point( -1, -1 )); temp.add(Other.get(0));
-//                        Other.clear(); Other.addAll(temp);
-//                    }
-//                }
-//            }
-//        }
-//    }
 }

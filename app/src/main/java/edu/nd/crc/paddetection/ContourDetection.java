@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Vector;
 
 import static com.google.common.primitives.Doubles.min;
+import static java.lang.Math.abs;
+import static java.lang.Math.atan2;
 
 /**
  * Created by Omegaice on 6/16/16.
@@ -56,7 +58,7 @@ public class ContourDetection {
     };
 
     //get fudicial points, mark onto current image (mRgbaModified)
-    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks, boolean portrait){
+    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks, boolean portrait, Mat destinationpoints){
 
         //get analasis/real ratio
         float ratio;
@@ -215,15 +217,40 @@ public class ContourDetection {
             }
 
             //test if we have data
-            if(outer.size() == 3 && qr.size() == 3){
+            if(outer.size() >= 2 && qr.size() == 3){
                 List<Point> src_points = order_points(outer, qr, ratio);
 
                 //create points
-                float data[] = {(float)src_points.get(0).x, (float)src_points.get(0).y,
+                float data[] = new float[8];
+                float data2[] = new float[8];
+                float locations[] = {85, 1163, 686, 1163, 686, 77, 244, 64, 82, 64, 82, 226};
+                int j = 0;
+
+                for(int i=0; i<4; i++){
+                    if(j == 4) j++; //miss first fiducial
+                    while(src_points.get(j).x < 0){
+                        j++;
+                    }
+                    double datinx = src_points.get(j).x;
+                    double datiny = src_points.get(j).y;
+                    if(datinx > 0 && datiny > 0){
+                        data[2*i] = (float)datinx;
+                        data[2*i+1] = (float)datiny;
+                        data2[2*i] = locations[j*2];
+                        data2[2*i+1] = locations[j*2+1];
+                        j++;
+                    }
+                }
+
+                //[85, 1163], [686, 1163], [686, 77], [82, 64], [82, 226], [244, 64]
+                //float data2[] = {85, 1163, 686, 1163, 686, 77, 82, 64};//, 244, 64}; //{82, 64, 85, 1163, 686, 1163, 686, 77};
+                destinationpoints.put(0, 0, data2);
+
+                /*float data[] = {(float)src_points.get(0).x, (float)src_points.get(0).y,
                         (float)src_points.get(1).x, (float)src_points.get(1).y,
                         (float)src_points.get(2).x, (float)src_points.get(2).y,
                         (float)src_points.get(3).x, (float)src_points.get(3).y};//,
-                        //(float)src_points.get(5).x, (float)src_points.get(5).y};//,
+                        //(float)src_points.get(5).x, (float)src_points.get(5).y};//,*/
                 //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
                 points.put(0, 0, data);
 
@@ -407,49 +434,88 @@ public class ContourDetection {
     private static List<Point> order_points(List<Point> outer, List<Point> qr, float ratio) {
         //return data
         List<Point> src_points = new Vector<>();
-
+        Log.i("ContoursOut", String.format("order points " + outer.size()));
         //sort outer~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //transpoints = [[85, 1163], [686, 1163], [686, 77]];
-        //max point, bottom RHS
-        double odist_0_max= 0;
-        int oindx = 0;
-        for(int i=0; i<3; i++){
-            double otmp_dist_0 = outer.get(i).x * outer.get(i).x + outer.get(i).y * outer.get(i).y;
-            if(otmp_dist_0 > odist_0_max){
-                odist_0_max = otmp_dist_0;
-                oindx = i;
+        if(outer.size() == 3) { //all points
+            //transpoints = [[85, 1163], [686, 1163], [686, 77]];
+            //max point, bottom RHS
+            double odist_0_max = 0;
+            int oindx = 0;
+            for (int i = 0; i < 3; i++) {
+                double otmp_dist_0 = outer.get(i).x * outer.get(i).x + outer.get(i).y * outer.get(i).y;
+                if (otmp_dist_0 > odist_0_max) {
+                    odist_0_max = otmp_dist_0;
+                    oindx = i;
+                }
             }
-        }
 
-        //lowest x (LHS)
-        double odist_x_min = 9999999;
-        int oindxx = 0;
-        for(int i=0; i<3; i++){
-            if(i == oindx) continue;
+            //lowest x (LHS)
+            double odist_x_min = 9999999;
+            int oindxx = 0;
+            for (int i = 0; i < 3; i++) {
+                if (i == oindx) continue;
 
-            if(outer.get(i).x < odist_x_min){
-                odist_x_min = outer.get(i).x;
-                oindxx = i;
+                if (outer.get(i).x < odist_x_min) {
+                    odist_x_min = outer.get(i).x;
+                    oindxx = i;
+                }
             }
-        }
 
-        //LHS outer fiducial
-        //src_points.push(outer[oindxx]);
-        src_points.add(new Point(outer.get(oindxx).y * ratio, (720 - outer.get(oindxx).x) * ratio));
-        //src_points.add(new Point(outer.get(oindxx).x, outer.get(oindxx).y));
+            //LHS outer fiducial
+            //src_points.push(outer[oindxx]);
+            src_points.add(new Point(outer.get(oindxx).y * ratio, (720 - outer.get(oindxx).x) * ratio));
+            //src_points.add(new Point(outer.get(oindxx).x, outer.get(oindxx).y));
 
-        //saved max fudicial
-        //src_points.push(outer[oindx]);
-        src_points.add(new Point(outer.get(oindx).y * ratio, (720 - outer.get(oindx).x) * ratio));
-        //src_points.add(new Point(outer.get(oindx).x, outer.get(oindx).y));
+            //saved max fudicial
+            //src_points.push(outer[oindx]);
+            src_points.add(new Point(outer.get(oindx).y * ratio, (720 - outer.get(oindx).x) * ratio));
+            //src_points.add(new Point(outer.get(oindx).x, outer.get(oindx).y));
 
-        //remaining fiducial
-        for(int i=0; i<3; i++){
-            if(i == oindx || i == oindxx) continue;
-            //LHS QR fiducial
-            //src_points.push(outer[i]);
-            src_points.add(new Point(outer.get(i).y * ratio, (720 - outer.get(i).x) * ratio));
-            //src_points.add(new Point(outer.get(i).x, outer.get(i).y));
+            //remaining fiducial
+            for (int i = 0; i < 3; i++) {
+                if (i == oindx || i == oindxx) continue;
+                //LHS QR fiducial
+                //src_points.push(outer[i]);
+                src_points.add(new Point(outer.get(i).y * ratio, (720 - outer.get(i).x) * ratio));
+                //src_points.add(new Point(outer.get(i).x, outer.get(i).y));
+            }
+        }else{ //only 2 points
+            //get angle
+            double delta_x = outer.get(1).x - outer.get(0).x;
+            double delta_y = outer.get(1).y - outer.get(0).y;
+            double theta_radians = atan2(delta_y, delta_x);
+            Log.i("ContoursOut", String.format("Angle %f", theta_radians));
+            if(abs(theta_radians) < .26){ //<26'
+                if(outer.get(1).x > outer.get(0).x){
+                    src_points.add(new Point(outer.get(0).y * ratio, (720 - outer.get(0).x) * ratio));
+                    src_points.add(new Point(outer.get(1).y * ratio, (720 - outer.get(1).x) * ratio));
+                }else{
+                    src_points.add(new Point(outer.get(1).y * ratio, (720 - outer.get(1).x) * ratio));
+                    src_points.add(new Point(outer.get(0).y * ratio, (720 - outer.get(0).x) * ratio));
+                }
+
+                src_points.add(new Point(-1, -1));
+            }else if(abs(theta_radians) > 1.3){ //>75'
+                src_points.add(new Point(-1, -1));
+
+                if(outer.get(1).y < outer.get(0).y){
+                    src_points.add(new Point(outer.get(0).y * ratio, (720 - outer.get(0).x) * ratio));
+                    src_points.add(new Point(outer.get(1).y * ratio, (720 - outer.get(1).x) * ratio));
+                }else{
+                    src_points.add(new Point(outer.get(1).y * ratio, (720 - outer.get(1).x) * ratio));
+                    src_points.add(new Point(outer.get(0).y * ratio, (720 - outer.get(0).x) * ratio));
+                }
+            }else{ //else oblique
+                if(outer.get(1).x > outer.get(0).x){
+                    src_points.add(new Point(outer.get(0).y * ratio, (720 - outer.get(0).x) * ratio));
+                    src_points.add(new Point(-1, -1));
+                    src_points.add(new Point(outer.get(1).y * ratio, (720 - outer.get(1).x) * ratio));
+                }else{
+                    src_points.add(new Point(outer.get(1).y * ratio, (720 - outer.get(1).x) * ratio));
+                    src_points.add(new Point(-1, -1));
+                    src_points.add(new Point(outer.get(0).y * ratio, (720 - outer.get(0).x) * ratio));
+                }
+            }
         }
 
         //sort qr~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -464,10 +530,6 @@ public class ContourDetection {
             }
         }
 
-        //min fiducial, top LHS
-        //src_points.push(qr[indx]);
-        src_points.add(new Point(qr.get(indx).y * ratio, (720 - qr.get(indx).x) * ratio));
-        //src_points.add(new Point(qr.get(indx).x, qr.get(indx).y));
 
         //smallest x
         double dist_x_min = 9999999;
@@ -481,10 +543,6 @@ public class ContourDetection {
             }
         }
 
-        //LHS QR fiducial
-        //src_points.push(qr[indxx]);
-        src_points.add(new Point(qr.get(indxx).y * ratio, (720 - qr.get(indxx).x) * ratio));
-        //src_points.add(new Point(qr.get(indxx).x, qr.get(indxx).y));
 
         //remaining fiducial
         for(int i=0; i<3; i++){
@@ -494,6 +552,16 @@ public class ContourDetection {
             src_points.add(new Point(qr.get(i).y * ratio, (720 - qr.get(i).x) * ratio));
             //src_points.add(new Point(qr.get(i).x, qr.get(i).y));
         }
+
+        //min fiducial, top LHS
+        //src_points.push(qr[indx]);
+        src_points.add(new Point(qr.get(indx).y * ratio, (720 - qr.get(indx).x) * ratio));
+        //src_points.add(new Point(qr.get(indx).x, qr.get(indx).y));
+
+        //LHS QR fiducial
+        //src_points.push(qr[indxx]);
+        src_points.add(new Point(qr.get(indxx).y * ratio, (720 - qr.get(indxx).x) * ratio));
+        //src_points.add(new Point(qr.get(indxx).x, qr.get(indxx).y));
 
         //return points
         return src_points;
@@ -524,7 +592,7 @@ public class ContourDetection {
         // Get rotation
         Point v1 = new Point((new_src.get(0).x - new_src.get(1).x), (new_src.get(0).y - new_src.get(1).y));
         Point v2 = new Point((new_dst.get(0).x - new_dst.get(1).x), (new_dst.get(0).y - new_dst.get(1).y));
-        double ang = Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x);
+        double ang = atan2(v2.y, v2.x) - atan2(v1.y, v1.x);
         double cosang = Math.cos(ang);
         double sinang = Math.sin(ang);
 
@@ -626,17 +694,17 @@ public class ContourDetection {
 //        }
 //    }
 
-    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks, int pad_version){
+    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks, int pad_version, Mat destinationpoints){
 
         //set artwork points
-        Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
+        //Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
 
         //[85, 1163], [686, 1163], [686, 77], [82, 64], [82, 226], [244, 64]
-        float data[] = {85, 1163, 686, 1163, 686, 77, 82, 64};//, 244, 64}; //{82, 64, 85, 1163, 686, 1163, 686, 77};
-        destinationpoints.put(0, 0, data);
+        //float data[] = {85, 1163, 686, 1163, 686, 77, 82, 64};//, 244, 64}; //{82, 64, 85, 1163, 686, 1163, 686, 77};
+        //destinationpoints.put(0, 0, data);
 
         //and for checks
-        double checksdata[] = {82, 226};//, 244, 64};
+        double checksdata[] = {82, 64};//226};//, 244, 64};
         Log.i("ContoursOut", String.format("Pre get persp"));
 
         //get transformation

@@ -355,14 +355,18 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             Core.flip(work, work, 1);
         }
 
+        //create destination
+        //set artwork points
+        Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
+
         //TimingLogger timings = new TimingLogger(CHRIS, "methodA");
-        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks, portrait);
+        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks, portrait, destinationpoints);
 
         //auto analyze?
         if (fiducialsAcquired) {
 
-            Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f) %f, %f.",
-                    points.get(0,0)[0], points.get(0,1)[0], points.get(1,0)[0], points.get(1,1)[0],points.size().height, points.size().width));
+            Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f) %f, %f.",
+                    points.get(0,0)[0], points.get(0,1)[0], points.get(1,0)[0], points.get(1,1)[0], points.get(2,0)[0], points.get(2,1)[0], points.get(3,0)[0], points.get(3,1)[0],points.size().height, points.size().width));
             //Log.i("ContoursOut", String.format("Points (%f, %f, %f).",
               //      checks.get(0,0)[0], checks.get(0,1)[0], checks.get(0,2)[0]));
 
@@ -401,7 +405,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 // rectify image, include QR/Fiducial points
                 //Note: sending color corrected image to rectifyer
                 //Mat cropped = new Mat();
-                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, points, cropped, checks, pad_version);
+                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, points, cropped, checks, pad_version, destinationpoints);
 
                 //error?
                 if (transformedOk) {

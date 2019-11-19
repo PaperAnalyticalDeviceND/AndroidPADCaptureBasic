@@ -480,16 +480,16 @@ public class ContourDetection {
         return T;
     }
 
-    public static boolean RectifyImage(Mat input, Mat Template, Mat fringe_warped, int pad_version, List<Point> src_points){
+    public static boolean RectifyImage(Mat input, Mat Template, Mat fringe_warped, List<Point> src_points, float dest_points[]){
 
         Log.i("ContoursOut", String.format("Pre get persp"));
 
         //create points
         float data[] = new float[8];
         float data2[] = new float[8];
-        float locations[] = {85, 1163, 686, 1163, 686, 77, 244, 64, 82, 64, 82, 226};
         int j = 0;
 
+        //copy data to structures
         for(int i=0; i<4; i++){
             if(j == 4) j++; //miss first fiducial
             while(src_points.get(j).x < 0){
@@ -500,8 +500,8 @@ public class ContourDetection {
             if(datinx > 0 && datiny > 0){
                 data[2*i] = (float)datinx;
                 data[2*i+1] = (float)datiny;
-                data2[2*i] = locations[j*2];
-                data2[2*i+1] = locations[j*2+1];
+                data2[2*i] = dest_points[j*2];
+                data2[2*i+1] = dest_points[j*2+1];
                 j++;
             }
         }
@@ -529,8 +529,8 @@ public class ContourDetection {
         checkdata[2] = 1.0;//,
 
         //set taerget point
-        checksdata[0] = locations[check_idx * 2];
-        checksdata[1] = locations[check_idx * 2 + 1];
+        checksdata[0] = dest_points[check_idx * 2];
+        checksdata[1] = dest_points[check_idx * 2 + 1];
 
         Mat checks = new Mat(3, 1,CvType.CV_64F);
         checks.put(0, 0, checkdata);

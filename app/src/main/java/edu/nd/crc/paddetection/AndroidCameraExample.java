@@ -371,6 +371,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
             //get pad version
             int pad_version = 0;
+            int pad_index = 0;
 
             //grab QR code
             String qr_data = null;
@@ -378,8 +379,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 qr_data = readQRCode(work);
                 if(qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")){
                     pad_version = 10;
+                    pad_index = 0;
                 }else if(qr_data.substring(0, 21).equals("padproject.nd.edu/?t=")){
                     pad_version = 20;
+                    pad_index = 1;
                 }
             } catch(Exception e) {
                 Log.i("ContoursOut", "QR error" + e.toString());
@@ -402,8 +405,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 });
 
                 // rectify image, include QR/Fiducial points
+                float dest_points[][] = {{85, 1163, 686, 1163, 686, 77, 244, 64, 82, 64, 82, 226}, {85, 1163, 686, 1163, 686, 77, 255, 64, 82, 64, 82, 237}};
+
                 //Note: sending color corrected image to rectifyer
-                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, cropped, pad_version, src_points);
+                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, cropped, src_points, dest_points[pad_index]);
 
                 //error?
                 if (transformedOk) {

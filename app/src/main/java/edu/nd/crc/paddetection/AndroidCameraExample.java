@@ -359,8 +359,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         //set artwork points
         Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
 
+        double checksdata[] = new double[2];//{82, 64};
+
         //TimingLogger timings = new TimingLogger(CHRIS, "methodA");
-        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks, portrait, destinationpoints);
+        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, points, checks, portrait, destinationpoints, checksdata);
 
         //auto analyze?
         if (fiducialsAcquired) {
@@ -405,7 +407,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 // rectify image, include QR/Fiducial points
                 //Note: sending color corrected image to rectifyer
                 //Mat cropped = new Mat();
-                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, points, cropped, checks, pad_version, destinationpoints);
+                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, points, cropped, checks, pad_version, destinationpoints, checksdata);
 
                 //error?
                 if (transformedOk) {

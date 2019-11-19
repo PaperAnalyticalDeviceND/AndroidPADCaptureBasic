@@ -58,7 +58,7 @@ public class ContourDetection {
     };
 
     //get fudicial points, mark onto current image (mRgbaModified)
-    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks, boolean portrait, Mat destinationpoints){
+    public static boolean GetFudicialLocations(Mat mRgbaModified, Mat work, Mat points, Mat checks, boolean portrait, Mat destinationpoints, double checksdata[]){
 
         //get analasis/real ratio
         float ratio;
@@ -254,7 +254,23 @@ public class ContourDetection {
                 //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y};
                 points.put(0, 0, data);
 
-                double checkdata[] = {src_points.get(4).x, src_points.get(4).y, 1.0};//,
+                //get check point, chose tp LHS QR if 3 QR, else one of QR
+                double checkdata[] = new double[3];
+
+                int check_idx = 4;
+
+                //check point 4 exists
+                if(src_points.get(check_idx).x < 0){
+                    //check_idx++;
+                }
+                //put in array
+                checkdata[0] = src_points.get(check_idx).x;
+                checkdata[1] = src_points.get(check_idx).y;
+                checkdata[2] = 1.0;//,
+
+                //set taerget point
+                checksdata[0] = locations[check_idx * 2];
+                checksdata[1] = locations[check_idx * 2 + 1];
                 //(float)QR.get(qrxhigh).x, (float)QR.get(qrxhigh).y, 1.0f};
 
                 checks.put(0, 0, checkdata);
@@ -520,48 +536,52 @@ public class ContourDetection {
 
         //sort qr~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         //transqrpoints = [[82, 64], [82, 226], [244, 64]];
-        double dist_0_min = 9999999;
-        int indx = 0;
-        for(int i=0; i<3; i++){
-            double tmp_dist_0 = qr.get(i).x * qr.get(i).x + qr.get(i).y * qr.get(i).y;
-            if(tmp_dist_0 < dist_0_min){
-                dist_0_min = tmp_dist_0;
-                indx = i;
+        if(qr.size() == 3) { //all points
+            double dist_0_min = 9999999;
+            int indx = 0;
+            for (int i = 0; i < 3; i++) {
+                double tmp_dist_0 = qr.get(i).x * qr.get(i).x + qr.get(i).y * qr.get(i).y;
+                if (tmp_dist_0 < dist_0_min) {
+                    dist_0_min = tmp_dist_0;
+                    indx = i;
+                }
             }
-        }
 
 
-        //smallest x
-        double dist_x_min = 9999999;
-        int indxx = 0;
-        for(int i=0; i<3; i++){
-            if(i == indx) continue;
+            //smallest x
+            double dist_x_min = 9999999;
+            int indxx = 0;
+            for (int i = 0; i < 3; i++) {
+                if (i == indx) continue;
 
-            if(qr.get(i).x < dist_x_min){
-                dist_x_min = qr.get(i).x;
-                indxx = i;
+                if (qr.get(i).x < dist_x_min) {
+                    dist_x_min = qr.get(i).x;
+                    indxx = i;
+                }
             }
-        }
 
 
-        //remaining fiducial
-        for(int i=0; i<3; i++){
-            if(i == indx || i == indxx) continue;
+            //remaining fiducial
+            for (int i = 0; i < 3; i++) {
+                if (i == indx || i == indxx) continue;
+                //LHS QR fiducial
+                //src_points.push(qr[i]);
+                src_points.add(new Point(qr.get(i).y * ratio, (720 - qr.get(i).x) * ratio));
+                //src_points.add(new Point(qr.get(i).x, qr.get(i).y));
+            }
+
+            //min fiducial, top LHS
+            //src_points.push(qr[indx]);
+            src_points.add(new Point(qr.get(indx).y * ratio, (720 - qr.get(indx).x) * ratio));
+            //src_points.add(new Point(qr.get(indx).x, qr.get(indx).y));
+
             //LHS QR fiducial
-            //src_points.push(qr[i]);
-            src_points.add(new Point(qr.get(i).y * ratio, (720 - qr.get(i).x) * ratio));
-            //src_points.add(new Point(qr.get(i).x, qr.get(i).y));
+            //src_points.push(qr[indxx]);
+            src_points.add(new Point(qr.get(indxx).y * ratio, (720 - qr.get(indxx).x) * ratio));
+            //src_points.add(new Point(qr.get(indxx).x, qr.get(indxx).y));
+        }else{ //only 2 ponts
+
         }
-
-        //min fiducial, top LHS
-        //src_points.push(qr[indx]);
-        src_points.add(new Point(qr.get(indx).y * ratio, (720 - qr.get(indx).x) * ratio));
-        //src_points.add(new Point(qr.get(indx).x, qr.get(indx).y));
-
-        //LHS QR fiducial
-        //src_points.push(qr[indxx]);
-        src_points.add(new Point(qr.get(indxx).y * ratio, (720 - qr.get(indxx).x) * ratio));
-        //src_points.add(new Point(qr.get(indxx).x, qr.get(indxx).y));
 
         //return points
         return src_points;
@@ -694,7 +714,7 @@ public class ContourDetection {
 //        }
 //    }
 
-    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks, int pad_version, Mat destinationpoints){
+    public static boolean RectifyImage(Mat input, Mat Template, Mat points, Mat fringe_warped, Mat checks, int pad_version, Mat destinationpoints, double checksdata[]){
 
         //set artwork points
         //Mat destinationpoints = new Mat(4, 2, CvType.CV_32F);
@@ -704,7 +724,7 @@ public class ContourDetection {
         //destinationpoints.put(0, 0, data);
 
         //and for checks
-        double checksdata[] = {82, 64};//226};//, 244, 64};
+        //double checksdata[] = {82, 64};//226};//, 244, 64};
         Log.i("ContoursOut", String.format("Pre get persp"));
 
         //get transformation

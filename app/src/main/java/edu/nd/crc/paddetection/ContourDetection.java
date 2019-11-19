@@ -217,7 +217,7 @@ public class ContourDetection {
             }
 
             //test if we have data
-            if(outer.size() >= 2 && qr.size() == 3){
+            if(outer.size() + qr.size() >= 5){
                 List<Point> src_points = order_points(outer, qr, ratio);
 
                 //create points
@@ -261,7 +261,7 @@ public class ContourDetection {
 
                 //check point 4 exists
                 if(src_points.get(check_idx).x < 0){
-                    //check_idx++;
+                    check_idx++;
                 }
                 //put in array
                 checkdata[0] = src_points.get(check_idx).x;
@@ -580,7 +580,42 @@ public class ContourDetection {
             src_points.add(new Point(qr.get(indxx).y * ratio, (720 - qr.get(indxx).x) * ratio));
             //src_points.add(new Point(qr.get(indxx).x, qr.get(indxx).y));
         }else{ //only 2 ponts
+            //get angle
+            double delta_x = qr.get(1).x - qr.get(0).x;
+            double delta_y = qr.get(1).y - qr.get(0).y;
+            double theta_radians = atan2(delta_y, delta_x);
+            Log.i("ContoursOut", String.format("Angle qr %f", theta_radians));
+            if(abs(theta_radians) < .26){ //<26'
+                if(qr.get(1).x > qr.get(0).x){
+                    src_points.add(new Point(qr.get(1).y * ratio, (720 - qr.get(1).x) * ratio));
+                    src_points.add(new Point(qr.get(0).y * ratio, (720 - qr.get(0).x) * ratio));
+                }else{
+                    src_points.add(new Point(qr.get(0).y * ratio, (720 - qr.get(0).x) * ratio));
+                    src_points.add(new Point(qr.get(1).y * ratio, (720 - qr.get(1).x) * ratio));
+                }
 
+                src_points.add(new Point(-1, -1));
+            }else if(abs(theta_radians) > 1.3){ //>75'
+                src_points.add(new Point(-1, -1));
+
+                if(qr.get(1).y < qr.get(0).y){
+                    src_points.add(new Point(qr.get(1).y * ratio, (720 - qr.get(1).x) * ratio));
+                    src_points.add(new Point(qr.get(0).y * ratio, (720 - qr.get(0).x) * ratio));
+                }else{
+                    src_points.add(new Point(qr.get(0).y * ratio, (720 - qr.get(0).x) * ratio));
+                    src_points.add(new Point(qr.get(1).y * ratio, (720 - qr.get(1).x) * ratio));
+                }
+            }else{ //else oblique
+                if(qr.get(1).x > qr.get(0).x){
+                    src_points.add(new Point(qr.get(1).y * ratio, (720 - qr.get(1).x) * ratio));
+                    src_points.add(new Point(-1, -1));
+                    src_points.add(new Point(qr.get(0).y * ratio, (720 - qr.get(0).x) * ratio));
+                }else{
+                    src_points.add(new Point(qr.get(0).y * ratio, (720 - qr.get(0).x) * ratio));
+                    src_points.add(new Point(-1, -1));
+                    src_points.add(new Point(qr.get(1).y * ratio, (720 - qr.get(1).x) * ratio));
+                }
+            }
         }
 
         //return points

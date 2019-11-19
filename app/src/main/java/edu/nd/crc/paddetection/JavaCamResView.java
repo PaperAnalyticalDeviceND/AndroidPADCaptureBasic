@@ -28,7 +28,10 @@ public class JavaCamResView extends JavaCameraView {
         disconnectCamera();
 
         //connectCamera(960, 720); 1920x1080, 3840x2160, 1280x720
-        connectCamera(1920, 1080);
+        //connectCamera(1920, 1080);
+        Log.d("Preview", "Width" + getWidth() + ", " + getHeight());
+        connectCamera(getWidth(), getHeight());
+
         Camera.Parameters params = this.mCamera.getParameters();
         params.setFlashMode(FLASH_MODE_TORCH);
         params.setFocusMode(FOCUS_MODE_CONTINUOUS_VIDEO);

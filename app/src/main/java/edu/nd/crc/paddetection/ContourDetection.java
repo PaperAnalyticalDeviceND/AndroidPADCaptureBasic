@@ -73,17 +73,18 @@ public class ContourDetection {
         //landscape comDisplay = new Point((mc.y) * ratio, (720-mc.x) * ratio);
         //center = 360
         double horiz_line = 730 / 2;
-        double scale_ratio = min(work.size().height / 1220, 1.0) * .9;
+        double scale_ratio = min(work.size().height / 1220, 1.0) * .95;
+        double offset = work.size().height *.025; //1/2 of the 5% from 0.95
         List<Integer> f_locs = Arrays.asList(85, 1163, 686, 1163, 686, 77, 82, 64, 82, 226, 244, 64);
         Scalar wt_color = new Scalar(255, 255, 255, 10);
         for(int i=0; i<6; i++) {
-            int x = (int)((f_locs.get(i*2) - horiz_line) * scale_ratio + horiz_line);
-            int y = (int)(f_locs.get(i*2+1) * scale_ratio);
+            int x = (int)((f_locs.get(i*2) - horiz_line) * scale_ratio + horiz_line - 10); //based on 730 width artwork
+            int y = (int)(f_locs.get(i*2+1) * scale_ratio + offset);
 
             Point pnt1 = new Point((y - 15) * ratio, (720 - x - 15) * ratio);
             Point pnt2 = new Point((y + 15) * ratio, (720 - x + 15) * ratio);
-            Point pnt3 = new Point((y - 7) * ratio, (720 - x - 7) * ratio);
-            Point pnt4 = new Point((y + 7) * ratio, (720 - x + 7) * ratio);
+            Point pnt3 = new Point((y - 8) * ratio, (720 - x - 8) * ratio);
+            Point pnt4 = new Point((y + 8) * ratio, (720 - x + 8) * ratio);
             Core.rectangle(mRgbaModified, pnt1, pnt2, wt_color, 2, 8, 0);
             Core.rectangle(mRgbaModified, pnt3, pnt4, wt_color, 2, 8, 0);
         }

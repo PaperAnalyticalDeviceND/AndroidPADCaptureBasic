@@ -441,17 +441,24 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                                             Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGBA);
                                             Highgui.imwrite(cFile.getPath(), cropped);
 
+                                            //save original image
+                                            File oFile = new File(padImageDirectory, "original.png");
+                                            Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_BGRA2RGBA);
+                                            Highgui.imwrite(oFile.getPath(), mRgba);
+
                                             //gallery?
                                             try {
                                                 MediaStore.Images.Media.insertImage(getContentResolver(), cFile.getPath(),
                                                         df.format(today), "Rectified Image");
+                                                MediaStore.Images.Media.insertImage(getContentResolver(), oFile.getPath(),
+                                                        df.format(today), "Origional Image");
                                             } catch (Exception e) {
                                                 Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
                                             }
 
                                             Log.i("ContoursOut", cFile.getPath());
 
-                                            Intent i = new Intent(Intent.ACTION_SEND);
+                                            Intent i = new Intent(Intent.ACTION_SEND_MULTIPLE);//ACTION_SEND);
                                             i.setType("message/rfc822");
                                             i.setType("application/image");
                                             i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
@@ -460,10 +467,22 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                                             i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                                             Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
-
                                             getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                                            Uri urio = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
+                                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), urio, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
                                             i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                            i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
+
+                                            //has to be an ArrayList
+                                            ArrayList<Uri> uris = new ArrayList<Uri>();
+                                            uris.add(uri);
+                                            uris.add(urio);
+
+                                            i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+
+                                            //i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
+                                            //i.putExtra(Intent.EXTRA_STREAM, urio);
 
                                             try {
                                                 //startActivity(Intent.createChooser(i, "Send mail..."));

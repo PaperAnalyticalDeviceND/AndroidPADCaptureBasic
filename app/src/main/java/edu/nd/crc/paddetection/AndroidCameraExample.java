@@ -422,110 +422,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
                 //error?
                 if (transformedOk) {
-                    Log.i("ContoursOut", String.format("Got here 2"));
+                    Log.i("ContoursOut", String.format("Transformed correctly"));
 
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Log.d("UI thread", "I am the UI thread");
-
-                            AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
-                            alert.setTitle("Fiducials acquired!");
-                            alert.setMessage("Store PAD image?");
-                            alert.setPositiveButton("OK",
-                                    new DialogInterface.OnClickListener() {
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-                                            Date today = Calendar.getInstance().getTime();
-
-                                            File SDlocation = Environment.getExternalStorageDirectory();
-                                            File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
-                                            padImageDirectory.mkdirs();
-
-                                            //save rectified image
-                                            File cFile = new File(padImageDirectory, "rectified.png");
-                                            Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGB);
-                                            Highgui.imwrite(cFile.getPath(), cropped);
-
-                                            //save original image
-                                            File oFile = new File(padImageDirectory, "original.png");
-                                            Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_BGRA2RGB);
-                                            Highgui.imwrite(oFile.getPath(), mRgba);
-
-                                            //gallery?
-                                            try {
-                                                MediaStore.Images.Media.insertImage(getContentResolver(), cFile.getPath(),
-                                                        df.format(today), "Rectified Image");
-                                                MediaStore.Images.Media.insertImage(getContentResolver(), oFile.getPath(),
-                                                        df.format(today), "Origional Image");
-                                            } catch (Exception e) {
-                                                Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
-                                            }
-
-                                            Log.i("ContoursOut", cFile.getPath());
-
-                                            Intent i = new Intent(Intent.ACTION_SEND_MULTIPLE);//ACTION_SEND);
-                                            i.setType("message/rfc822");
-                                            i.setType("application/image");
-                                            i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
-                                            i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
-                                            i.putExtra(Intent.EXTRA_TEXT, "Pad image");
-                                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                            Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
-                                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                            Uri urio = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
-                                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), urio, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                            //has to be an ArrayList
-                                            ArrayList<Uri> uris = new ArrayList<Uri>();
-                                            uris.add(uri);
-                                            uris.add(urio);
-
-                                            i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-
-                                            //i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
-                                            //i.putExtra(Intent.EXTRA_STREAM, urio);
-
-                                            try {
-                                                //startActivity(Intent.createChooser(i, "Send mail..."));
-                                                startActivity(i);
-                                            } catch (android.content.ActivityNotFoundException ex) {
-                                                Log.i("ContoursOut", "There are no email clients installed.");
-                                            }
-
-                                            //start preview
-                                            mOpenCvCameraView.StartPreview();
-
-                                            dialog.dismiss();
-
-                                            ad = null;
-                                        }
-                                    }
-                            );
-                            alert.setNegativeButton("Cancel",
-                                    new DialogInterface.OnClickListener() {
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            //start preview
-                                            mOpenCvCameraView.StartPreview();
-
-                                            dialog.dismiss();
-
-                                            ad = null;
-                                        }
-                                    }
-                            );
-                            ad = alert.show();
-
-                        }
-                    });
-                    //new Thread(new Task()).start();
-
-                    //stop preview
-                    mOpenCvCameraView.StopPreview();
+                    //ask if we want to save data for email
+                    showSaveDialog();
                 }
 
                 //mOpenCvCameraView.StopPreview();
@@ -535,6 +435,113 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
         return mRgbaModified;
 	}
+
+/*
+Show dialog to save data
+ */
+public void showSaveDialog(){
+    new Handler(Looper.getMainLooper()).post(new Runnable() {
+        @Override
+        public void run() {
+            Log.d("UI thread", "I am the UI thread");
+
+            AlertDialog.Builder alert = new AlertDialog.Builder(AndroidCameraExample.this);
+            alert.setTitle("Fiducials acquired!");
+            alert.setMessage("Store PAD image?");
+            alert.setPositiveButton("OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                            Date today = Calendar.getInstance().getTime();
+
+                            File SDlocation = Environment.getExternalStorageDirectory();
+                            File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
+                            padImageDirectory.mkdirs();
+
+                            //save rectified image
+                            File cFile = new File(padImageDirectory, "rectified.png");
+                            Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGB);
+                            Highgui.imwrite(cFile.getPath(), cropped);
+
+                            //save original image
+                            File oFile = new File(padImageDirectory, "original.png");
+                            Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_BGRA2RGB);
+                            Highgui.imwrite(oFile.getPath(), mRgba);
+
+                            //gallery?
+                            try {
+                                MediaStore.Images.Media.insertImage(getContentResolver(), cFile.getPath(),
+                                        df.format(today), "Rectified Image");
+                                MediaStore.Images.Media.insertImage(getContentResolver(), oFile.getPath(),
+                                        df.format(today), "Origional Image");
+                            } catch (Exception e) {
+                                Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
+                            }
+
+                            Log.i("ContoursOut", cFile.getPath());
+
+                            Intent i = new Intent(Intent.ACTION_SEND_MULTIPLE);//ACTION_SEND);
+                            i.setType("message/rfc822");
+                            i.setType("application/image");
+                            i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
+                            i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
+                            i.putExtra(Intent.EXTRA_TEXT, "Pad image");
+                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                            Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
+                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                            Uri urio = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
+                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), urio, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                            //has to be an ArrayList
+                            ArrayList<Uri> uris = new ArrayList<Uri>();
+                            uris.add(uri);
+                            uris.add(urio);
+
+                            i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+
+                            //i.putExtra(Intent.EXTRA_STREAM, uri); //Uri.parse("content://"+cFile.getPath())); ACTION_VIEW, EXTRA_STREAM
+                            //i.putExtra(Intent.EXTRA_STREAM, urio);
+
+                            try {
+                                //startActivity(Intent.createChooser(i, "Send mail..."));
+                                startActivity(i);
+                            } catch (android.content.ActivityNotFoundException ex) {
+                                Log.i("ContoursOut", "There are no email clients installed.");
+                            }
+
+                            //start preview
+                            mOpenCvCameraView.StartPreview();
+
+                            dialog.dismiss();
+
+                            ad = null;
+                        }
+                    }
+            );
+            alert.setNegativeButton("Cancel",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            //start preview
+                            mOpenCvCameraView.StartPreview();
+
+                            dialog.dismiss();
+
+                            ad = null;
+                        }
+                    }
+            );
+            ad = alert.show();
+
+        }
+    });
+
+    //stop preview while we wait for response
+    mOpenCvCameraView.StopPreview();
+}
 
 /**
  *

@@ -21,6 +21,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface.OnDismissListener;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
@@ -124,6 +125,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     //private Mat checks = new Mat(3, 1,CvType.CV_64F);
     private Mat testMat = new Mat();
     private Mat cropped = new Mat();
+    private AlertDialog ad = null;
 
     //UI
     private FloatingActionButton analyzeButton;
@@ -342,6 +344,10 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         mRgbaModified = inputFrame.rgba();
+
+        //woiting on dialog?
+        if(ad != null) return mRgbaModified;
+
         mRgbaModified.copyTo(mRgbaTemp);
 
         boolean portrait = true;
@@ -495,6 +501,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                                             mOpenCvCameraView.StartPreview();
 
                                             dialog.dismiss();
+
+                                            ad = null;
                                         }
                                     }
                             );
@@ -505,10 +513,13 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                                             mOpenCvCameraView.StartPreview();
 
                                             dialog.dismiss();
+
+                                            ad = null;
                                         }
                                     }
                             );
-                            alert.show();
+                            ad = alert.show();
+
                         }
                     });
                     //new Thread(new Task()).start();

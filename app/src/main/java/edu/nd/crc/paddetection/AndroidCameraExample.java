@@ -373,10 +373,14 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             int pad_version = 0;
             int pad_index = 0;
 
+            //smaller image?
+            Rect roi = new Rect(0, 0, 720 / 2, 1220 / 2);
+            Mat smallImg = new Mat(work, roi);
+
             //grab QR code
             String qr_data = null;
             try{
-                qr_data = readQRCode(work);
+                qr_data = readQRCode(smallImg);
                 if(qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")){
                     pad_version = 10;
                     pad_index = 0;

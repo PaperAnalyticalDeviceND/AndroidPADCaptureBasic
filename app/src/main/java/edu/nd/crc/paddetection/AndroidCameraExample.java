@@ -438,12 +438,12 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
                                             //save rectified image
                                             File cFile = new File(padImageDirectory, "rectified.png");
-                                            Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGBA);
+                                            Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGB);
                                             Highgui.imwrite(cFile.getPath(), cropped);
 
                                             //save original image
                                             File oFile = new File(padImageDirectory, "original.png");
-                                            Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_BGRA2RGBA);
+                                            Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_BGRA2RGB);
                                             Highgui.imwrite(oFile.getPath(), mRgba);
 
                                             //gallery?

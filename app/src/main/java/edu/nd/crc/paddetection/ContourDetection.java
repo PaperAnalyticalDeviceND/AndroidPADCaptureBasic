@@ -535,11 +535,6 @@ public class ContourDetection {
         Mat checks = new Mat(3, 1,CvType.CV_64F);
         checks.put(0, 0, checkdata);
 
-        Log.i("ContoursOut", String.format("Points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
-                src_points.get(0).x, src_points.get(0).y, src_points.get(1).x, src_points.get(1).y, src_points.get(2).x,
-                src_points.get(2).y, src_points.get(3).x, src_points.get(3).y, src_points.get(4).x, src_points.get(4).y,
-                src_points.get(5).x, src_points.get(5).y));
-
         //get transformation
         Mat TI = Imgproc.getPerspectiveTransform(points, destinationpoints);//TransformPoints(points, destinationpoints);
         Log.i("ContoursOut", String.format("TI %s, %s.",TI.toString(), checks.toString()));

@@ -92,6 +92,8 @@ import com.google.zxing.Result;
 //import com.google.zxing.client.j2se.MatrixToImageWriter;
 //import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
+
+import static java.lang.Math.sqrt;
 //import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 public class AndroidCameraExample extends Activity implements CvCameraViewListener2 { //}, CNNListener {
@@ -126,6 +128,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private Mat testMat = new Mat();
     private Mat cropped = new Mat();
     private AlertDialog ad = null;
+    List<Point> last_points = null;
 
     //UI
     private FloatingActionButton analyzeButton;
@@ -352,13 +355,17 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
         boolean portrait = true;
         Mat work = new Mat();
+        float ratio;
+
         if(mRgbaModified.size().height >  mRgbaModified.size().width) {
             Imgproc.resize(inputFrame.gray(), work, new Size(IMAGE_WIDTH, (mRgbaModified.size().height * IMAGE_WIDTH) / mRgbaModified.size().width), 0, 0, Imgproc.INTER_LINEAR);
+            ratio = (float)mRgbaModified.size().width / (float)IMAGE_WIDTH;
         }else{
             portrait = false;
             Imgproc.resize(inputFrame.gray(), work, new Size((mRgbaModified.size().width * IMAGE_WIDTH) / mRgbaModified.size().height, IMAGE_WIDTH), 0, 0, Imgproc.INTER_LINEAR);
             Core.transpose(work, work);
             Core.flip(work, work, 1);
+            ratio = (float)mRgbaModified.size().height / (float)IMAGE_WIDTH;
         }
 
         //create source points
@@ -369,6 +376,40 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
         //auto analyze?
         if (fiducialsAcquired) {
+
+            //setup to check not moving fast
+            boolean moving = false;
+
+            //setup last points or find norm difference
+            if(last_points == null){
+                last_points = new Vector<>();
+                for(int i=0; i<6; i++){
+                    last_points.add(new Point(-1,-1));
+                }
+                moving = true;
+                //Log.i("ContoursOut", String.format("Initial norm %d", last_points.size()));
+            }else{
+                //test distance
+                double norm = 0;
+                for(int i=0; i<6; i++){
+                    if(last_points.get(i).x > 0 && src_points.get(i).x > 0) {
+                        norm += (last_points.get(i).x - src_points.get(i).x) * (last_points.get(i).x - src_points.get(i).x) + (last_points.get(i).y - src_points.get(i).y) * (last_points.get(i).y - src_points.get(i).y);
+                    }
+                }
+                double sqrt_norm = sqrt(norm) / ratio;
+
+                //test if moving too quickley
+                if(sqrt_norm > 10){
+                    moving = true;
+                }
+                Log.i("ContoursOut", String.format("norm diff %f", sqrt(norm)));
+            }
+
+            //copy last point
+            Collections.copy(last_points, src_points);
+
+            //return if appears to be moving
+            if(moving) return mRgbaModified;
 
             Log.i("ContoursOut", String.format("Source points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
                     src_points.get(0).x, src_points.get(0).y, src_points.get(1).x, src_points.get(1).y, src_points.get(2).x,
@@ -424,7 +465,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                 if (transformedOk) {
                     Log.i("ContoursOut", String.format("Transformed correctly"));
 
-                    //ask if we want to save data for email
+                    //ask if we want to save data for email, also block updates until done.
                     showSaveDialog();
                 }
 
@@ -436,7 +477,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         return mRgbaModified;
 	}
 
-/*
+/**
 Show dialog to save data
  */
 public void showSaveDialog(){

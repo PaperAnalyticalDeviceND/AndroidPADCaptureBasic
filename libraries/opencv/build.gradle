@@ -2,20 +2,22 @@ apply plugin: 'android-library'
 
 buildscript {
     repositories {
+        jcenter()
         mavenCentral()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.0'
+        classpath 'com.android.tools.build:gradle:3.6.3'
     }
 }
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion '25.0.0'
+    compileSdkVersion 29
+    buildToolsVersion '28.0.3'
 
     defaultConfig {
         minSdkVersion 15
-        targetSdkVersion 23
+        targetSdkVersion 29
         versionCode 2490
         versionName "2.4.9"
     }

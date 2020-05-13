@@ -7,7 +7,6 @@
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <uses-feature android:name="android.hardware.camera.autofocus" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
-    <uses-sdk android:minSdkVersion="17" />
 
     <application
         android:allowBackup="true"

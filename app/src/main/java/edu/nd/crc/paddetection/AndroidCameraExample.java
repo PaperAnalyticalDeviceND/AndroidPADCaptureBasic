@@ -350,7 +350,7 @@ public void showSaveDialog(){
                             DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
                             Date today = Calendar.getInstance().getTime();
 
-                            File SDlocation = Environment.getExternalStorageDirectory();
+                            File SDlocation = getExternalFilesDir(null);
                             File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
                             padImageDirectory.mkdirs();
 

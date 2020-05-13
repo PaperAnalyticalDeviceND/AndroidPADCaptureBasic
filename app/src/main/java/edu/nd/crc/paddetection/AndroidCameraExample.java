@@ -123,9 +123,6 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
                         Manifest.permission.WRITE_EXTERNAL_STORAGE}, 91);
 
 		mOpenCvCameraView = (JavaCamResView) findViewById(R.id.activity_surface_view);
-		mOpenCvCameraView.setCvCameraViewListener(this);
-        mOpenCvCameraView.enableFpsMeter();
-
         analyzeButton = (FloatingActionButton) findViewById(R.id.floatingAnalyze);
     }
 
@@ -167,6 +164,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         mTemplate = new Mat();
         Imgproc.cvtColor(tMat, mTemplate, Imgproc.COLOR_BGRA2GRAY);
 
+        mOpenCvCameraView.setCvCameraViewListener(this);
+        mOpenCvCameraView.enableFpsMeter();
         mOpenCvCameraView.enableView();
 	}
 
@@ -176,6 +175,15 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
             mOpenCvCameraView.disableView();
         }
 	}
+
+	private Intent mResultIntent = new Intent();
+
+    @Override
+    public void finish() {
+        Log.i("PAD", "Sending result:" + mResultIntent.toString());
+        setResult(RESULT_OK, mResultIntent);
+        super.finish();
+    }
 
     public void onCameraViewStarted(int width, int height) {
         mOpenCvCameraView.Setup();
@@ -347,6 +355,7 @@ public void showSaveDialog(){
             alert.setPositiveButton("OK",
                     new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
+
                             DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
                             Date today = Calendar.getInstance().getTime();
 
@@ -374,43 +383,53 @@ public void showSaveDialog(){
                                 Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
                             }
 
-                            Log.i("ContoursOut", cFile.getPath());
+                            Intent intent = getIntent();
+                            Log.i("PAD", "Intent:" + intent.toString());
+                            if( intent != null ){
+                                mResultIntent.putExtra("raw", oFile.getPath().toString());
+                                mResultIntent.putExtra("rectified", cFile.getPath().toString());
+                                //intent.putExtra("qr", qrFile.getPath().toString());
+                                mResultIntent.putExtra("timestamp", Calendar.getInstance().getTimeInMillis());
+                                finish();
+                            }else {
+                                Log.i("ContoursOut", cFile.getPath());
 
-                            Intent i = new Intent(Intent.ACTION_SEND_MULTIPLE);
-                            i.setType("message/rfc822");
-                            i.setType("application/image");
-                            i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
-                            i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
-                            i.putExtra(Intent.EXTRA_TEXT, "Pad image");
-                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                Intent i = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                                i.setType("message/rfc822");
+                                i.setType("application/image");
+                                i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
+                                i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
+                                i.putExtra(Intent.EXTRA_TEXT, "Pad image");
+                                i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                            Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
-                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
+                                getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                            Uri urio = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
-                            getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), urio, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                Uri urio = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
+                                getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), urio, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                            //has to be an ArrayList
-                            ArrayList<Uri> uris = new ArrayList<Uri>();
-                            uris.add(uri);
-                            uris.add(urio);
+                                //has to be an ArrayList
+                                ArrayList<Uri> uris = new ArrayList<Uri>();
+                                uris.add(uri);
+                                uris.add(urio);
 
-                            i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                                i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
 
-                            try {
-                                startActivity(i);
-                            } catch (android.content.ActivityNotFoundException ex) {
-                                Log.i("ContoursOut", "There are no email clients installed.");
+                                try {
+                                    startActivity(i);
+                                } catch (android.content.ActivityNotFoundException ex) {
+                                    Log.i("ContoursOut", "There are no email clients installed.");
+                                }
+
+                                //start preview
+                                mOpenCvCameraView.StartPreview();
+
+                                dialog.dismiss();
+
+                                ad = null;
                             }
-
-                            //start preview
-                            mOpenCvCameraView.StartPreview();
-
-                            dialog.dismiss();
-
-                            ad = null;
                         }
                     }
             );

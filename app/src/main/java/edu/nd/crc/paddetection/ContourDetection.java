@@ -356,6 +356,7 @@ public class ContourDetection {
             //src_points.add(new Point(qr.get(indxx).x, qr.get(indxx).y));
         }else{ //only 2 ponts
             //get angle
+            Log.d("PADS", qr.toString());
             double delta_x = qr.get(1).x - qr.get(0).x;
             double delta_y = qr.get(1).y - qr.get(0).y;
             double theta_radians = atan2(delta_y, delta_x);

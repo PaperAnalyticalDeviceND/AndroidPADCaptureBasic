@@ -57,7 +57,6 @@ import com.google.zxing.LuminanceSource;
 import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.Reader;
 import com.google.zxing.datamatrix.DataMatrixReader;
-import com.sh1r0.caffe_android_lib.CaffeMobile;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -95,8 +94,6 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 	private JavaCamResView mOpenCvCameraView;
 
     static {
-        System.loadLibrary("caffe");
-        System.loadLibrary("caffe_jni");
         System.loadLibrary("opencv_java");
     }
 

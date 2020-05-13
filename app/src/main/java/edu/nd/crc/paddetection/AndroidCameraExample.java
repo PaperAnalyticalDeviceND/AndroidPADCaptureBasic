@@ -1,72 +1,55 @@
 package edu.nd.crc.paddetection;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.core.CvType;
-import org.opencv.core.MatOfPoint;
-import org.opencv.android.Utils;
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
-import org.opencv.highgui.Highgui;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.imgproc.Moments;
-
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.DialogInterface.OnDismissListener;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.hardware.Camera;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.SystemClock;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
-import android.util.TimingLogger;
 import android.view.View;
-import android.view.ViewDebug;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.provider.MediaStore;
 
+import com.google.zxing.BinaryBitmap;
 import com.google.zxing.ChecksumException;
 import com.google.zxing.FormatException;
 import com.google.zxing.LuminanceSource;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.NotFoundException;
 import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.Reader;
-import com.google.zxing.datamatrix.DataMatrixReader;
+import com.google.zxing.Result;
+import com.google.zxing.common.HybridBinarizer;
 
-import java.io.BufferedReader;
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
+import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Size;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
+
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -74,30 +57,31 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Scanner;
 import java.util.Vector;
-import android.os.Handler;
-import android.os.Looper;
-
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.MultiFormatReader;
-import com.google.zxing.MultiFormatWriter;
-import com.google.zxing.NotFoundException;
-import com.google.zxing.Result;
-import com.google.zxing.common.HybridBinarizer;
 
 import static java.lang.Math.sqrt;
 
 public class AndroidCameraExample extends Activity implements CvCameraViewListener2 {
 	private JavaCamResView mOpenCvCameraView;
 
-    static {
-        System.loadLibrary("opencv_java");
-    }
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Log.i("PADS", "OpenCV loaded successfully");
+                    mOpenCvCameraView.enableView();
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
 
-    public Mat mRgba = new Mat(), mRgbaTemp = new Mat();
+    public Mat mRgba, mRgbaTemp;
     private Mat mTemplate;
     private String LOG_TAG = "PAD";
     private ProgressDialog dialog, progdialog;
@@ -106,8 +90,8 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
 
     //saved contour results
     private boolean markersDetected = false;
-    private Mat testMat = new Mat();
-    private Mat cropped = new Mat();
+    private Mat testMat;
+    private Mat cropped;
     private AlertDialog ad = null;
     List<Point> last_points = null;
 
@@ -143,6 +127,30 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         mOpenCvCameraView.enableFpsMeter();
 
         analyzeButton = (FloatingActionButton) findViewById(R.id.floatingAnalyze);
+    }
+
+	@Override
+	public void onPause() {
+		super.onPause();
+		if (mOpenCvCameraView != null) {
+            mOpenCvCameraView.disableView();
+        }
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+        if (!OpenCVLoader.initDebug()) {
+            Log.d("PADs", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_11, this, mLoaderCallback);
+        } else {
+            Log.d("PADs", "OpenCV library found inside package. Using it!");
+            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
+        mRgba = new Mat();
+        mRgbaTemp = new Mat();
+        testMat = new Mat();
+        cropped = new Mat();
 
         // Parse input template file
         Bitmap tBM = BitmapFactory.decodeStream(this.getClass().getResourceAsStream("/template.png"));
@@ -159,21 +167,6 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         mTemplate = new Mat();
         Imgproc.cvtColor(tMat, mTemplate, Imgproc.COLOR_BGRA2GRAY);
 
-        //get sd cards path
-        File sdcard_path = Environment.getExternalStorageDirectory();
-    }
-
-	@Override
-	public void onPause() {
-		super.onPause();
-		if (mOpenCvCameraView != null) {
-            mOpenCvCameraView.disableView();
-        }
-	}
-
-	@Override
-	public void onResume() {
-		super.onResume();
         mOpenCvCameraView.enableView();
 	}
 
@@ -364,12 +357,12 @@ public void showSaveDialog(){
                             //save rectified image
                             File cFile = new File(padImageDirectory, "rectified.png");
                             Imgproc.cvtColor(cropped, cropped, Imgproc.COLOR_BGRA2RGB);
-                            Highgui.imwrite(cFile.getPath(), cropped);
+                            Imgcodecs.imwrite(cFile.getPath(), cropped);
 
                             //save original image
                             File oFile = new File(padImageDirectory, "original.png");
                             Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_BGRA2RGB);
-                            Highgui.imwrite(oFile.getPath(), mRgba);
+                            Imgcodecs.imwrite(oFile.getPath(), mRgba);
 
                             //gallery?
                             try {

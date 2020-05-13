@@ -1,7 +1,5 @@
 package edu.nd.crc.paddetection;
 
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Environment;
 import android.util.Log;
 
@@ -10,22 +8,16 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
-import org.opencv.core.Point3;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.highgui.Highgui;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
 import java.io.File;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Vector;
 
@@ -92,8 +84,8 @@ public class ContourDetection {
             Point pnt2 = new Point((y + 15) * ratio, (720 - x + 15) * ratio);
             Point pnt3 = new Point((y - 8) * ratio, (720 - x - 8) * ratio);
             Point pnt4 = new Point((y + 8) * ratio, (720 - x + 8) * ratio);
-            Core.rectangle(mRgbaModified, pnt1, pnt2, wt_color, 2, 8, 0);
-            Core.rectangle(mRgbaModified, pnt3, pnt4, wt_color, 2, 8, 0);
+            Imgproc.rectangle(mRgbaModified, pnt1, pnt2, wt_color, 2, 8, 0);
+            Imgproc.rectangle(mRgbaModified, pnt3, pnt4, wt_color, 2, 8, 0);
         }
 
         //ratio = (float)1.5;
@@ -209,7 +201,7 @@ public class ContourDetection {
                         }else{
                             comDisplay = new Point((mc.y) * ratio, (720-mc.x) * ratio);
                         }
-                        Core.circle(mRgbaModified, comDisplay, 10, color, 2, 8, 0);
+                        Imgproc.circle(mRgbaModified, comDisplay, 10, color, 2, 8, 0);
 
                     }
                     //Log.i("ContoursOut", "Location " + mc.x + ", " + mc.y);
@@ -581,11 +573,11 @@ public class ContourDetection {
         Mat mTemp = new Mat();
         File outputFile = new File(padImageDirectory, "image.jpeg");
         Imgproc.cvtColor(im_warped_nb, mTemp, Imgproc.COLOR_GRAY2RGBA);
-        Highgui.imwrite(outputFile.getPath(), mTemp);
+        Imgcodecs.imwrite(outputFile.getPath(), mTemp);
 
         File outputFiles = new File(padImageDirectory, "template.jpeg");
         Imgproc.cvtColor(Template, mTemp, Imgproc.COLOR_GRAY2RGBA);
-        Highgui.imwrite(outputFiles.getPath(), mTemp);
+        Imgcodecs.imwrite(outputFiles.getPath(), mTemp);
 
 
 
@@ -617,7 +609,7 @@ public class ContourDetection {
             MatOfPoint mp = new MatOfPoint();
             mp.fromList(rect);
             poly.add(mp);
-            Core.fillPoly(cellmask, poly, new Scalar(0));
+            Imgproc.fillPoly(cellmask, poly, new Scalar(0));
         }
 
         if( cellPoints.size() != 2) {
@@ -660,17 +652,17 @@ public class ContourDetection {
         Log.d("Contour", String.format("TICP %f %f %f \n %f %f %f \n %f %f %f", tBuff[0], tBuff[1], tBuff[2], tBuff[3], tBuff[4], tBuff[5], tBuff[6], tBuff[7], tBuff[8]));
 
         //Mat fringe_warped = new Mat();
-        Imgproc.warpPerspective(work, fringe_warped, TICP, new Size(690 + 40, 1220), Imgproc.BORDER_REPLICATE);
+        Imgproc.warpPerspective(work, fringe_warped, TICP, new Size(690 + 40, 1220));
 
         for( int i = 0; i < 13; i++ ) {
             double px = 706 - 53 * i;
-            Core.line(fringe_warped, new Point(px, 339 + 20), new Point(px, 1095), new Scalar(0, 255, 0), 1);
+            Imgproc.line(fringe_warped, new Point(px, 339 + 20), new Point(px, 1095), new Scalar(0, 255, 0), 1);
         }
 
-        Core.line(fringe_warped, new Point(comparePoints.get(0).x,comparePoints.get(0).y-5), new Point(comparePoints.get(0).x,comparePoints.get(0).y+5), new Scalar(0,255,0),1);
-        Core.line(fringe_warped, new Point(comparePoints.get(0).x-5,comparePoints.get(0).y), new Point(comparePoints.get(0).x+5,comparePoints.get(0).y), new Scalar(0,255,0),1);
-        Core.line(fringe_warped, new Point(comparePoints.get(1).x,comparePoints.get(1).y-5), new Point(comparePoints.get(1).x,comparePoints.get(1).y+5), new Scalar(0,255,0),1);
-        Core.line(fringe_warped, new Point(comparePoints.get(1).x-5,comparePoints.get(1).y), new Point(comparePoints.get(1).x+5,comparePoints.get(1).y), new Scalar(0,255,0),1);
+        Imgproc.line(fringe_warped, new Point(comparePoints.get(0).x,comparePoints.get(0).y-5), new Point(comparePoints.get(0).x,comparePoints.get(0).y+5), new Scalar(0,255,0),1);
+        Imgproc.line(fringe_warped, new Point(comparePoints.get(0).x-5,comparePoints.get(0).y), new Point(comparePoints.get(0).x+5,comparePoints.get(0).y), new Scalar(0,255,0),1);
+        Imgproc.line(fringe_warped, new Point(comparePoints.get(1).x,comparePoints.get(1).y-5), new Point(comparePoints.get(1).x,comparePoints.get(1).y+5), new Scalar(0,255,0),1);
+        Imgproc.line(fringe_warped, new Point(comparePoints.get(1).x-5,comparePoints.get(1).y), new Point(comparePoints.get(1).x+5,comparePoints.get(1).y), new Scalar(0,255,0),1);
 
         //wax markers
         //Core.circle(fringe_warped, new Point(387,214), 10, new Scalar(0,0,255), 2, 6, 0);

@@ -50,6 +50,7 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
+import java.net.URI;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -87,6 +88,7 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
     private ProgressDialog dialog, progdialog;
     private Mat mRgbaModified;
     private static int IMAGE_WIDTH = 720;
+    private String qrText = new String();
 
     //saved contour results
     private boolean markersDetected = false;
@@ -238,103 +240,107 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         List<Point> src_points = new Vector<>();
 
         //Look for fiducials
-        boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, src_points, portrait);
+        try {
+            boolean fiducialsAcquired = ContourDetection.GetFudicialLocations(mRgbaModified, work, src_points, portrait);
 
-        //auto analyze?
-        if (fiducialsAcquired) {
+            //auto analyze?
+            if (fiducialsAcquired) {
 
-            //setup to check not moving fast
-            boolean moving = false;
+                //setup to check not moving fast
+                boolean moving = false;
 
-            //setup last points or find norm difference
-            if(last_points == null){
-                last_points = new Vector<>();
-                for(int i=0; i<6; i++){
-                    last_points.add(new Point(-1,-1));
-                }
-                moving = true;
-            }else{
-                //test distance
-                double norm = 0;
-                for(int i=0; i<6; i++){
-                    if(last_points.get(i).x > 0 && src_points.get(i).x > 0) {
-                        norm += (last_points.get(i).x - src_points.get(i).x) * (last_points.get(i).x - src_points.get(i).x) + (last_points.get(i).y - src_points.get(i).y) * (last_points.get(i).y - src_points.get(i).y);
+                //setup last points or find norm difference
+                if (last_points == null) {
+                    last_points = new Vector<>();
+                    for (int i = 0; i < 6; i++) {
+                        last_points.add(new Point(-1, -1));
                     }
-                }
-                double sqrt_norm = sqrt(norm) / ratio;
-
-                //test if moving too quickley
-                if(sqrt_norm > 10){
                     moving = true;
-                }
-                Log.i("ContoursOut", String.format("norm diff %f", sqrt(norm)));
-            }
-
-            //copy last point
-            Collections.copy(last_points, src_points);
-
-            //return if appears to be moving
-            if(moving) return mRgbaModified;
-
-            Log.i("ContoursOut", String.format("Source points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
-                    src_points.get(0).x, src_points.get(0).y, src_points.get(1).x, src_points.get(1).y, src_points.get(2).x,
-                    src_points.get(2).y, src_points.get(3).x, src_points.get(3).y, src_points.get(4).x, src_points.get(4).y,
-                    src_points.get(5).x, src_points.get(5).y));
-
-            //get pad version
-            int pad_version = 0;
-            int pad_index = 0;
-
-            //smaller image?
-            Rect roi = new Rect(0, 0, 720 / 2, 1220 / 2);
-            Mat smallImg = new Mat(work, roi);
-
-            //grab QR code
-            String qr_data = null;
-            try{
-                qr_data = readQRCode(smallImg);
-                if(qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")){
-                    pad_version = 10;
-                    pad_index = 0;
-                }else if(qr_data.substring(0, 21).equals("padproject.nd.edu/?t=")){
-                    pad_version = 20;
-                    pad_index = 1;
-                }
-            } catch(Exception e) {
-                Log.i("ContoursOut", "QR error" + e.toString());
-            }
-
-            if(pad_version != 0) {
-                Log.i("ContoursOut", "Version " + Integer.toString(pad_version));
-                //save successful frame
-                mRgbaTemp.copyTo(mRgba);
-
-                //flag saved
-                markersDetected = true;
-
-                //enable button once acquired
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        analyzeButton.setEnabled(true);
+                } else {
+                    //test distance
+                    double norm = 0;
+                    for (int i = 0; i < 6; i++) {
+                        if (last_points.get(i).x > 0 && src_points.get(i).x > 0) {
+                            norm += (last_points.get(i).x - src_points.get(i).x) * (last_points.get(i).x - src_points.get(i).x) + (last_points.get(i).y - src_points.get(i).y) * (last_points.get(i).y - src_points.get(i).y);
+                        }
                     }
-                });
+                    double sqrt_norm = sqrt(norm) / ratio;
 
-                // rectify image, include QR/Fiducial points
-                float dest_points[][] = {{85, 1163, 686, 1163, 686, 77, 244, 64, 82, 64, 82, 226}, {85, 1163, 686, 1163, 686, 77, 255, 64, 82, 64, 82, 237}};
+                    //test if moving too quickley
+                    if (sqrt_norm > 10) {
+                        moving = true;
+                    }
+                    Log.i("ContoursOut", String.format("norm diff %f", sqrt(norm)));
+                }
 
-                //Note: sending color corrected image to rectifyer
-                boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, cropped, src_points, dest_points[pad_index]);
+                //copy last point
+                Collections.copy(last_points, src_points);
 
-                //error?
-                if (transformedOk) {
-                    Log.i("ContoursOut", String.format("Transformed correctly"));
+                //return if appears to be moving
+                if (moving) return mRgbaModified;
 
-                    //ask if we want to save data for email, also block updates until done.
-                    showSaveDialog();
+                Log.i("ContoursOut", String.format("Source points (%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f),(%f, %f).",
+                        src_points.get(0).x, src_points.get(0).y, src_points.get(1).x, src_points.get(1).y, src_points.get(2).x,
+                        src_points.get(2).y, src_points.get(3).x, src_points.get(3).y, src_points.get(4).x, src_points.get(4).y,
+                        src_points.get(5).x, src_points.get(5).y));
+
+                //get pad version
+                int pad_version = 0;
+                int pad_index = 0;
+
+                //smaller image?
+                Rect roi = new Rect(0, 0, 720 / 2, 1220 / 2);
+                Mat smallImg = new Mat(work, roi);
+
+                //grab QR code
+                String qr_data = null;
+                try {
+                    qr_data = readQRCode(smallImg);
+                    if (qr_data.substring(0, 21).equals("padproject.nd.edu/?s=")) {
+                        pad_version = 10;
+                        pad_index = 0;
+                    } else if (qr_data.substring(0, 21).equals("padproject.nd.edu/?t=")) {
+                        pad_version = 20;
+                        pad_index = 1;
+                    }
+                    qrText = qr_data;
+                } catch (Exception e) {
+                    Log.i("ContoursOut", "QR error" + e.toString());
+                }
+
+                if (pad_version != 0) {
+                    Log.i("ContoursOut", "Version " + Integer.toString(pad_version));
+                    //save successful frame
+                    mRgbaTemp.copyTo(mRgba);
+
+                    //flag saved
+                    markersDetected = true;
+
+                    //enable button once acquired
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            analyzeButton.setEnabled(true);
+                        }
+                    });
+
+                    // rectify image, include QR/Fiducial points
+                    float dest_points[][] = {{85, 1163, 686, 1163, 686, 77, 244, 64, 82, 64, 82, 226}, {85, 1163, 686, 1163, 686, 77, 255, 64, 82, 64, 82, 237}};
+
+                    //Note: sending color corrected image to rectifyer
+                    boolean transformedOk = ContourDetection.RectifyImage(mRgba, mTemplate, cropped, src_points, dest_points[pad_index]);
+
+                    //error?
+                    if (transformedOk) {
+                        Log.i("ContoursOut", String.format("Transformed correctly"));
+
+                        //ask if we want to save data for email, also block updates until done.
+                        showSaveDialog();
+                    }
                 }
             }
-
+        }catch (Exception e){
+            Log.d("PADS", "Fudicial Location find exception:" + e.toString());
         }
 
         return mRgbaModified;
@@ -385,10 +391,10 @@ public void showSaveDialog(){
 
                             Intent intent = getIntent();
                             Log.i("PAD", "Intent:" + intent.toString());
-                            if( intent != null ){
+                            if( intent != null && intent.getData() != null){
                                 mResultIntent.putExtra("raw", oFile.getPath().toString());
                                 mResultIntent.putExtra("rectified", cFile.getPath().toString());
-                                //intent.putExtra("qr", qrFile.getPath().toString());
+                                mResultIntent.putExtra("qr", qrText);
                                 mResultIntent.putExtra("timestamp", Calendar.getInstance().getTimeInMillis());
                                 finish();
                             }else {

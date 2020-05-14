@@ -385,12 +385,13 @@ public void showSaveDialog(){
                                         df.format(today), "Rectified Image");
                                 MediaStore.Images.Media.insertImage(getContentResolver(), oFile.getPath(),
                                         df.format(today), "Origional Image");
+                                //Log.i("ContoursOut", "Saved to gallery");
                             } catch (Exception e) {
                                 Log.i("ContoursOut", "Cannot save to gallery" + e.toString());
                             }
 
                             Intent intent = getIntent();
-                            Log.i("PAD", "Intent:" + intent.toString());
+                            //Log.i("PAD", "Intent:" + intent.toString());
                             if( intent != null && intent.getData() != null){
                                 mResultIntent.putExtra("raw", oFile.getPath().toString());
                                 mResultIntent.putExtra("rectified", cFile.getPath().toString());
@@ -405,7 +406,7 @@ public void showSaveDialog(){
                                 i.setType("application/image");
                                 i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
                                 i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
-                                i.putExtra(Intent.EXTRA_TEXT, "Pad image");
+                                i.putExtra(Intent.EXTRA_TEXT, "Pad image (" + qrText + ")");
                                 i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                                 Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));

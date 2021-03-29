@@ -49,8 +49,11 @@ import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
-import java.net.URI;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -59,7 +62,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Vector;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
+import static android.support.v4.content.FileProvider.getUriForFile;
 import static java.lang.Math.sqrt;
 
 public class AndroidCameraExample extends Activity implements CvCameraViewListener2 {
@@ -346,6 +352,25 @@ public class AndroidCameraExample extends Activity implements CvCameraViewListen
         return mRgbaModified;
 	}
 
+	private void CompressOutputs( File[] files, File output ) throws Exception{
+        ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(output)));
+
+        byte buffer[] = new byte[4096];
+        for (int i = 0; i < files.length; i++) {
+            BufferedInputStream origin = new BufferedInputStream(new FileInputStream(files[i]), buffer.length);
+
+            ZipEntry entry = new ZipEntry(files[i].getPath().substring(files[i].getPath().lastIndexOf("/") + 1));
+            out.putNextEntry(entry);
+
+            int count;
+            while ((count = origin.read(buffer, 0, buffer.length)) != -1) {
+                out.write(buffer, 0, count);
+            }
+
+            origin.close();
+        }
+        out.close();
+    }
 /**
 Show dialog to save data
  */
@@ -361,12 +386,11 @@ public void showSaveDialog(){
             alert.setPositiveButton("OK",
                     new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
-
                             DateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
                             Date today = Calendar.getInstance().getTime();
 
-                            File SDlocation = getExternalFilesDir(null);
-                            File padImageDirectory = new File(SDlocation + "/PAD/" + df.format(today));
+                            File imagePath = new File(AndroidCameraExample.this.getFilesDir(), "images");
+                            File padImageDirectory = new File(imagePath + "/PAD/" + df.format(today));
                             padImageDirectory.mkdirs();
 
                             //save rectified image
@@ -391,13 +415,18 @@ public void showSaveDialog(){
                             }
 
                             Intent intent = getIntent();
-                            //Log.i("PAD", "Intent:" + intent.toString());
                             if( intent != null && intent.getData() != null){
-                                mResultIntent.putExtra("raw", oFile.getPath().toString());
-                                mResultIntent.putExtra("rectified", cFile.getPath().toString());
-                                mResultIntent.putExtra("qr", qrText);
-                                mResultIntent.putExtra("timestamp", Calendar.getInstance().getTimeInMillis());
-                                finish();
+                                try{
+                                    File target = new File(padImageDirectory, "compressed.zip");
+                                    CompressOutputs(new File[]{ cFile, oFile }, target);
+                                    mResultIntent.setData(getUriForFile(AndroidCameraExample.this, "edu.nd.crc.paddetection.fileprovider", target));
+                                    mResultIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                    mResultIntent.putExtra("qr", qrText);
+                                    mResultIntent.putExtra("timestamp", Calendar.getInstance().getTimeInMillis());
+                                    finish();
+                                }catch( Exception e ) {
+                                    Log.i("ContoursOut", "Cannot compress files: " + e.toString());
+                                }
                             }else {
                                 Log.i("ContoursOut", cFile.getPath());
 
@@ -409,10 +438,10 @@ public void showSaveDialog(){
                                 i.putExtra(Intent.EXTRA_TEXT, "Pad image (" + qrText + ")");
                                 i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                                Uri uri = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
+                                Uri uri = getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
                                 getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                                Uri urio = FileProvider.getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
+                                Uri urio = getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
                                 getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), urio, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                                 i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);

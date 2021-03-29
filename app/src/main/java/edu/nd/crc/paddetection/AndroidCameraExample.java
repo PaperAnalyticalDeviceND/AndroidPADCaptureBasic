@@ -436,22 +436,11 @@ public void showSaveDialog(){
                                 i.putExtra(Intent.EXTRA_EMAIL, new String[]{"paperanalyticaldevices@gmail.com"});
                                 i.putExtra(Intent.EXTRA_SUBJECT, "PADs");
                                 i.putExtra(Intent.EXTRA_TEXT, "Pad image (" + qrText + ")");
-                                i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                Uri uri = getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(cFile.getPath()));
-                                getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                Uri urio = getUriForFile(getApplicationContext(), getApplicationContext().getPackageName(), new File(oFile.getPath()));
-                                getApplicationContext().grantUriPermission(getApplicationContext().getPackageName(), urio, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                                //has to be an ArrayList
                                 ArrayList<Uri> uris = new ArrayList<Uri>();
-                                uris.add(uri);
-                                uris.add(urio);
-
+                                uris.add(getUriForFile(getApplicationContext(), getApplicationContext().getPackageName() + ".fileprovider", new File(cFile.getPath())));
+                                uris.add(getUriForFile(getApplicationContext(), getApplicationContext().getPackageName() + ".fileprovider", new File(oFile.getPath())));
                                 i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                                i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                                 try {
                                     startActivity(i);
